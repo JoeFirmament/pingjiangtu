@@ -333,6 +333,12 @@ body.showig .mk.ig{display:block !important;opacity:.3}
 /* 远看时红点变淡变细，但一直看得见 —— 浓度由 JS 按倍率写进 --mkop，
    不再一刀切 .45（那样全图时几乎找不到点）。悬停/选中/待提交始终全实。 */
 .mk{opacity:var(--mkop,.72)}
+/* 命中区比红点本身大一圈（透明、不可见）：全图时点只有 6px，手点不准。
+   放大后这层也一起变大，密集处仍以最近的点为准。 */
+.mk:not(.auto)::after{
+  content:"";position:absolute;left:50%;top:50%;width:16px;height:16px;
+  margin:-8px 0 0 -8px;border-radius:50%;
+}
 .mk:hover,.mk.sel,.mk.fx,.mk.sub{opacity:1}
 .mk.ig{opacity:.3}
 /* 标注文字：独立于缩放图层。
@@ -353,7 +359,11 @@ body.showig .mk.ig{display:block !important;opacity:.3}
   box-shadow:0 0 0 1px rgba(251,250,245,.92);
   transform-origin:0 0;
   will-change:transform;
+  /* 旗标必须可点：图上名字就是改名入口。#labels 整层不接收事件（否则会挡住拖图），
+     只把旗标本身重新打开。低倍率下旗标才 0x0 隐藏，其余时候它是最大的可点目标。 */
+  pointer-events:auto;cursor:pointer;
 }
+#labels .lb:hover{background:#8f2b22;box-shadow:0 0 0 1px #fbfaf5,0 0 0 2px rgba(168,52,42,.35)}
 /* 竖排：writing-mode 竖排 + 字正立。窄条占地小，密集碑刻区用它挡得最少，
    而且能贴在点的左右两侧，让箭头横向指过去——横排做不到这一点。 */
 #labels .lb.v{
@@ -809,6 +819,7 @@ body.picking #stage{cursor:crosshair}
 （红点和虚线框不是两种不同的东西，而是<b>同一处点位「认出来了」和「还没认出来」</b>的两种状态。金环和蓝环可以叠加出现：金环＝你改的还没交，蓝环＝已交在等。）<br><br>
 <b>二、怎么标注</b><br>
 按<b>「标注模式」</b>→ 点红点或虚线框，改名字／类型／备注；拖动改坐标，或按「重新定位」；双击地图空白处可新增。<br>
+已经命名的点，<b>直接点图上那块写着名字的旗标</b>就能改；再点一次光标就落进名称框。<br>
 按<b>「保存 ⏎」只存、不动视野</b>，留在原地；想连着标下一个按<b>「下一个待标点 ›」</b>。<br>
 那个位置根本不是地名（城墙砖、栏杆纹样），按<b>「不是地名」</b>排除。<br>
 面板里的<b>放大镜</b>放大的是碑上原字 —— 照着它写名字。<br><br>
@@ -822,7 +833,7 @@ body.picking #stage{cursor:crosshair}
       快捷键：<b>/</b> 聚焦搜索　·　<b>⌘Z</b> 撤销　·　<b>⌘S</b> 导出　·　方向键微调红点
     </div>
     <div id="verline">
-      平江图地名库 <b>v1.0.0</b>　·　构建 2026-10-21 22:08　·　<span id="verCnt">点位 —</span>
+      平江图地名库 <b>v1.0.1</b>　·　构建 2026-10-21 23:13　·　<span id="verCnt">点位 —</span>
     </div>
     <div class="mnt">
       <span>本机数据（一般用不到）</span>
@@ -1485,6 +1496,36 @@ function select(id, fly){
   if(fly && window.innerWidth <= 860) document.body.classList.remove("panel");
   openInsp(p);
 }
+/* 旗标（图上那个带名字的朱砂块）就是「改这一处」的入口。
+   以前 #labels 整层 pointer-events:none，旗标看着像按钮、点下去却是在拖图，
+   于是已标注的点「貌似不能修改」—— 只能去点它旁边那颗 9px 的小红点。
+   现在：单击选中并打开右侧面板；已经选中的再点一下，光标直接落进名称框。
+   要 stopPropagation，否则 stage 的 pointerdown 会同时开始拖图。 */
+labelLayer.addEventListener("pointerdown", e => {
+  if(!e.target.closest(".lb")) return;
+  e.stopPropagation();
+  e.preventDefault();                     // 别让旗标进入文字选择/拖拽
+});
+labelLayer.addEventListener("click", e => {
+  const lb = e.target.closest(".lb");
+  if(!lb) return;
+  e.stopPropagation();
+  const id = lb.dataset.id, p = byId.get(id);
+  if(!p) return;
+  if(picking) return;                     // 「重新定位」时点旗标＝点那个位置，交给 stage
+  const again = selId === id;
+  select(id, false);
+  if(again){ fName.focus(); fName.select(); }
+});
+labelLayer.addEventListener("dblclick", e => {
+  const lb = e.target.closest(".lb");
+  if(!lb) return;
+  e.stopPropagation();                    // 否则 stage 的 dblclick 会在图上新建一个点
+  const p = byId.get(lb.dataset.id);
+  if(!p) return;
+  select(p.id, false);
+  fName.focus(); fName.select();
+});
 function openInsp(p){
   insp.style.display = "block";
   setTitle(p);
