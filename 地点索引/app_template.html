@@ -1,0 +1,2868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>平江图 · 地点数据库（南宋苏州城图，可检索、可标注）</title>
+<meta name="description" content="南宋绍定二年（1229）《平江图》碑刻地名数据库：937 处点位可搜索、可定位、可放大读原字，支持游客标注与修订提交。">
+<meta property="og:title" content="平江图 · 地点数据库">
+<meta property="og:description" content="在 1229 年的苏州城图上，逐字核校每一处地名：桥、门、寺观、坊巷、河道。">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#fbfaf5">
+<style>
+/* ═══════════ 设计变量：素纸 · 墨 · 一点朱 ═══════════ */
+:root{
+  /* 纸 —— #fbfaf5 是从底图上实测采样出来的纸色（四角与中缝同色）。
+     画布底与面板底都用它：图与底连成一片，只留发丝线分界，不再像贴在桌上的卡片。 */
+  --paper-0:#fbfaf5;          /* 面板 */
+  --paper-1:#fbfaf5;          /* 画布底 = 底图纸色 */
+  --paper-2:#ffffff;
+  /* 墨 */
+  --ink:#2b2926;
+  --ink-2:#6d685d;
+  --ink-3:#96907f;
+  --ink-4:#b6b0a1;
+  /* 线 */
+  --line:#e7e4d9;
+  --line-2:#d7d2c2;
+  /* 一点朱 · 金 · 青 */
+  --cinnabar:#a8342a;
+  --cinnabar-2:#bd4a33;
+  --gold:#a8873c;
+  --blue:#5b7d8c;
+  /* 兼容旧变量名 */
+  --stone-0:#fcfbf7; --stone-1:#f7f5ee; --stone-2:#f3f1e9; --stone-3:#ece9df;
+  --stone-4:#e3dfd2; --edge:var(--line-2); --edge-2:#b9b2a0;
+  --paper:#fbfaf5; --paper2:#ffffff; --paper-ink:var(--ink); --paper-line:var(--line);
+  --line:#e7e4d9; --ink2:var(--ink-2);
+  --serif:"Songti SC","STSong","Source Han Serif SC","Noto Serif SC",serif;
+  --noise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  display:flex;font:14px/1.65 "PingFang SC","Hiragino Sans GB",system-ui,sans-serif;
+  color:var(--ink);overflow:hidden;background:var(--paper-1);
+  -webkit-font-smoothing:antialiased;
+}
+body::before{                                  /* 纸的极淡纤维 */
+  content:"";position:fixed;inset:0;background-image:var(--noise);
+  opacity:.022;pointer-events:none;z-index:9;mix-blend-mode:multiply;
+}
+
+/* ═══════════ 左侧栏 ═══════════ */
+#side{
+  /* 窗口变窄时先收窄侧栏，而不是整块藏起来 —— 搜索框是主入口，不能跟着一起消失 */
+  position:relative;width:clamp(286px,27vw,330px);flex:0 0 clamp(286px,27vw,330px);
+  height:100%;display:flex;flex-direction:column;
+  background:var(--paper-0);border-right:1px solid var(--line);
+}
+/* 头部：一方印 + 标题 */
+#stelecap{
+  position:relative;padding:20px 18px 13px;border-bottom:1px solid var(--line);
+}
+.caprow{display:flex;align-items:center;gap:10px}
+#seal{
+  flex:0 0 auto;width:27px;height:27px;border-radius:2px;
+  background:var(--cinnabar);color:#fdf8ee;
+  font:500 11px/27px var(--serif);text-align:center;letter-spacing:.06em;
+  text-indent:.06em;
+}
+#side h1{
+  margin:0;font:500 19px/1.2 var(--serif);letter-spacing:.16em;color:var(--ink);
+  text-indent:.16em;
+}
+#side h1 small{
+  display:block;font:400 10.5px/1.7 "PingFang SC",sans-serif;letter-spacing:.02em;
+  color:var(--ink-3);margin-top:3px;text-indent:0;
+}
+#who{
+  display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink-3);
+  margin-top:10px;letter-spacing:.01em;
+}
+#who .dot{width:5px;height:5px;border-radius:50%;background:#8ca077;flex:0 0 auto}
+#who b{font-weight:500;color:var(--ink-2)}
+#who button{
+  margin-left:auto;border:1px solid var(--line-2);background:transparent;border-radius:2px;
+  font-size:10px;padding:2px 8px;color:var(--ink-3);cursor:pointer;font-family:inherit;
+  transition:border-color .12s,color .12s;
+}
+#who button:hover{border-color:var(--ink-3);color:var(--ink)}
+
+/* 搜索 */
+.searchwrap{padding:14px 18px 9px;position:relative}
+#q{
+  width:100%;padding:9px 28px 9px 10px;font-size:13px;color:var(--ink);
+  background:var(--paper-2);border:1px solid var(--line-2);border-radius:2px;outline:none;
+  font-family:inherit;
+}
+#q::placeholder{color:var(--ink-4)}
+#q:focus{border-color:var(--ink-3);background:#fff}
+#qclear{
+  position:absolute;right:26px;top:23px;width:16px;height:16px;border:0;background:none;
+  color:var(--ink-4);cursor:pointer;font-size:14px;line-height:1;display:none;
+}
+#qclear:hover{color:var(--ink-2)}
+
+/* 类型签 */
+/* 状态签：一行放下，不滚动 */
+#chips{display:flex;flex-wrap:wrap;gap:5px;padding:0 18px 10px;}
+.chip{
+  flex:0 0 auto;font-size:11px;padding:2px 8px;border:1px solid var(--line-2);border-radius:2px;
+  background:transparent;color:var(--ink-3);cursor:pointer;user-select:none;white-space:nowrap;
+  transition:color .12s,border-color .12s,background .12s;
+}
+.chip:hover{border-color:var(--ink-4);color:var(--ink-2)}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fbfaf5}
+/* 状态类不跟着走墨黑：待审＝靛青、待提交＝赭金，与图上的蓝环／金环同色系。
+   墨黑是「已确认的动作」，拿它标注「还在等」会看成像报错或像已完成。 */
+.chip.on[data-k="待审"]{background:var(--blue);border-color:var(--blue)}
+.chip.on[data-k="待提交"]{background:var(--gold);border-color:var(--gold)}
+.chip.on[data-k="已忽略"]{background:var(--ink-3);border-color:var(--ink-3)}
+/* 类型下拉：和状态签同高同风格 */
+.chipsel{
+  flex:0 0 auto;font:11px/1.5 "PingFang SC",sans-serif;padding:2px 4px 2px 6px;
+  border:1px solid var(--line-2);border-radius:2px;background:transparent;color:var(--ink-3);
+  cursor:pointer;appearance:none;-webkit-appearance:none;outline:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink-4) 50%),
+                   linear-gradient(135deg,var(--ink-4) 50%,transparent 50%);
+  background-position:calc(100% - 9px) 50%,calc(100% - 5px) 50%;
+  background-size:4px 4px,4px 4px;background-repeat:no-repeat;padding-right:18px;
+}
+.chipsel:hover{border-color:var(--ink-4);color:var(--ink-2)}
+.chipsel.on{border-color:var(--ink-3);color:var(--ink)}
+.chip.clr{color:var(--cinnabar);border-color:#e6cfc9}
+.chip.clr:hover{background:#fdf3f0;border-color:#dcb9b2;color:var(--cinnabar)}
+
+/*==TPLWARN-START== 模板提示条（build.py 会连注释一起删掉） */
+#tplWarn{
+  position:absolute;left:50%;top:26px;transform:translateX(-50%);z-index:200;
+  max-width:min(560px,86%);padding:16px 20px;border-radius:3px;
+  background:#fffaf2;border:1px solid #dcc9a4;box-shadow:0 10px 34px rgba(70,58,38,.16);
+  font-size:13px;line-height:2;color:var(--ink-2);
+}
+#tplWarn b{display:block;font:500 14.5px/1.7 var(--serif);color:var(--ink);margin-bottom:6px;letter-spacing:.04em}
+#tplWarn code{
+  font:11.5px ui-monospace,monospace;background:#f3efe3;border:1px solid #e2d6bd;
+  border-radius:2px;padding:2px 6px;color:#7a5d2e;word-break:break-all;
+}
+/*==TPLWARN-END== */
+
+#legend{list-style:none;border-bottom:1px solid var(--line)}
+#legend::-webkit-details-marker{display:none}
+#legend>summary{
+  list-style:none;cursor:pointer;user-select:none;padding:6px 18px;font-size:10px;
+  color:var(--ink-3);letter-spacing:.03em;display:flex;align-items:center;gap:4px;
+}
+#legend>summary::-webkit-details-marker{display:none}
+#legend>summary::before{content:"＋";color:var(--ink-4);font-size:9px;width:9px;flex:0 0 9px}
+#legend[open]>summary::before{content:"－"}
+#legend>summary:hover{color:var(--ink-2)}
+#legend>summary b{color:var(--ink-2);font-weight:500;font-family:ui-monospace,monospace;font-size:10px}
+
+/* 图例摘要行的进度数字 */
+#legend>summary .sep{color:var(--ink-4);margin:0 2px}
+
+/* 分块进度 */
+#blockbox{border-bottom:1px solid var(--line)}
+#blockbox>summary{
+  list-style:none;cursor:pointer;padding:7px 18px;font-size:10.5px;color:var(--ink-3);
+  letter-spacing:.03em;user-select:none;
+}
+#blockbox>summary::-webkit-details-marker{display:none}
+#blockbox>summary::before{content:"＋ ";color:var(--ink-4)}
+#blockbox[open]>summary::before{content:"－ "}
+#blockbox>summary:hover{color:var(--ink-2)}
+#blocks{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;padding:2px 18px 12px}
+#blocks .bk{
+  height:19px;border:1px solid var(--line-2);border-radius:1px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font:9px ui-monospace,monospace;color:var(--ink-4);background:transparent;user-select:none;
+  position:relative;overflow:hidden;
+}
+#blocks .bk.done{background:#eff2e9;border-color:#d3dcc6;color:#6d8257}
+#blocks .bk.on{outline:1px solid var(--ink);outline-offset:-1px}
+#blocks .bk:hover{border-color:var(--ink-3)}
+#blocks .bk em{position:absolute;left:0;bottom:0;height:1.5px;background:var(--cinnabar);opacity:.55}
+#blocks .hd{grid-column:1/-1;font-size:10px;color:var(--ink-4);margin:0 0 2px}
+
+/* ═══════════ 图例：折叠，只在需要时展开 ═══════════ */
+#legend{padding:0}
+#legend[open]{padding:2px 18px 11px;background:#faf8f1}
+#legend .lg{
+  display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.6;color:var(--ink-2);
+  padding:3px 0;
+}
+#legend .lg i{                              /* 图例里的符号 */
+  flex:0 0 15px;width:15px;height:15px;margin-top:2px;position:relative;display:block;
+}
+#legend .lg b{font-weight:500;color:var(--ink);letter-spacing:.02em}
+#legend .lg em{font-style:normal;color:var(--ink-4)}
+#lg-dot i::after{
+  content:"";position:absolute;left:5px;top:5px;width:5px;height:5px;border-radius:50%;
+  background:var(--cinnabar);box-shadow:0 0 0 1px rgba(255,255,255,.9);
+}
+#lg-box i::after{
+  content:"";position:absolute;left:1.5px;top:2.5px;width:12px;height:10px;
+  border:1px dashed rgba(160,90,76,.62);background:rgba(168,52,42,.03);border-radius:1px;
+}
+#lg-gold i::after{
+  content:"";position:absolute;left:3.5px;top:3.5px;width:8px;height:8px;border-radius:50%;
+  background:var(--cinnabar);box-shadow:0 0 0 2px var(--gold);
+}
+#lg-sub i::after{
+  content:"";position:absolute;left:3.5px;top:3.5px;width:8px;height:8px;border-radius:50%;
+  background:var(--cinnabar);box-shadow:0 0 0 2px rgba(91,125,140,.85);
+}
+#lg-sel i::after{
+  content:"";position:absolute;left:4px;top:4px;width:7px;height:7px;border-radius:50%;
+  background:var(--ink);box-shadow:0 0 0 1.5px #fff,0 0 0 3px var(--ink);
+}
+
+#list{flex:1;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+#list::-webkit-scrollbar{width:6px}
+#list::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px}
+.row{
+  padding:8px 18px;border-bottom:1px solid #f1efe6;cursor:pointer;
+  display:flex;align-items:baseline;gap:7px;color:var(--ink);
+}
+.row:hover{background:#f7f5ec}
+.row.sel{background:#f3f1e6}
+.row .nm{font:14.5px/1.5 var(--serif);letter-spacing:.03em}
+.row .nm.empty{color:var(--ink-4)}
+.row .tg{font-size:10.5px;color:var(--ink-4);border:1px solid var(--line-2);border-radius:1px;padding:0 4px;letter-spacing:.02em}
+.row .id{margin-left:auto;font:10px ui-monospace,monospace;color:var(--ink-4)}
+.row.ig .nm{color:var(--ink-4);text-decoration:line-through}
+.row.ig .tg{border-style:dashed}
+/* 待提交 / 待审 的可见标记 */
+.row.dirty{box-shadow:inset 2px 0 0 var(--gold);background:#fbf8ef}
+.row .pen,.row .sub{
+  font-size:9px;letter-spacing:.06em;border-radius:1px;padding:0 3px;flex:0 0 auto;
+}
+.row .pen{color:#7d5f1c;background:#f8f1dd;border:1px solid #e6d5a6}
+.row .sub{color:#4f6b78;background:#eef3f5;border:1px solid #cfdbe1}
+.hint{padding:11px 18px;font-size:11px;color:var(--ink-3);line-height:1.8}
+.hint.lgh{
+  padding:7px 18px 5px;font-size:9.5px;letter-spacing:.08em;color:var(--ink-4);
+  background:#f8f6ee;border-bottom:1px solid var(--line);border-top:1px solid var(--line);
+}
+
+/* 待提交条 */
+#commitbar{
+  display:none;margin:0 14px 9px;padding:9px 10px;border:1px solid #e8d6cf;border-left:2px solid var(--cinnabar);
+  border-radius:2px;background:#fdf6f3;align-items:center;gap:8px;
+}
+#commitbar.on{display:flex}
+#cbTxt{font-size:11.5px;color:#7a5d55;flex:1;line-height:1.45}
+#cbTxt b{color:var(--cinnabar);font-weight:500}
+#cbTxt .cbsub{color:#5b7d8c;margin-left:5px}
+#cbGo{font-size:11.5px!important;padding:5px 10px!important}
+
+/* 底部 */
+#actions{
+  padding:11px 14px calc(11px + env(safe-area-inset-bottom));border-top:1px solid var(--line);
+  display:flex;gap:6px;background:var(--paper-0);
+}
+button.b{
+  font:12px/1.4 "PingFang SC",sans-serif;padding:7px 11px;border-radius:2px;cursor:pointer;
+  border:1px solid var(--line-2);color:var(--ink-2);background:transparent;
+  transition:border-color .12s,color .12s,background .12s;
+}
+button.b:hover{border-color:var(--ink-3);color:var(--ink);background:rgba(43,41,38,.035)}
+button.b:active{background:rgba(43,41,38,.07)}
+button.b.primary{
+  background:var(--ink);border-color:var(--ink);color:#fbfaf5;letter-spacing:.05em;
+}
+button.b.primary:hover{background:#1e1d1a;border-color:#1e1d1a;color:#fff}
+button.b.primary.off{background:transparent;color:var(--cinnabar);border-color:#dcb9b2}
+/* 唯一保留的朱：提交动作 */
+#commitbar #cbGo{background:var(--cinnabar);border-color:var(--cinnabar);color:#fdf8ee}
+#commitbar #cbGo:hover{background:#952d24;border-color:#952d24;color:#fff}
+#btnEdit{flex:1 1 auto;min-width:88px}
+#btnDesk{flex:0 0 auto}
+#btnAuto{flex:0 0 auto}
+#btnMore{flex:0 0 auto;padding:7px 9px}
+#btnDesk.alert{background:#faf8f1;border-color:var(--line-2);color:var(--ink-2)}
+#btnAuto.on{background:var(--ink);border-color:var(--ink);color:#fbfaf5}
+#moremenu{
+  display:none;position:absolute;left:14px;right:14px;bottom:58px;z-index:60;
+  grid-template-columns:1fr 1fr;gap:6px;padding:10px;border:1px solid var(--line-2);border-radius:2px;
+  background:var(--paper-0);box-shadow:0 6px 20px rgba(60,52,40,.07);
+}
+#moremenu.on{display:grid}
+#moremenu .b{font-size:11.5px;padding:7px 9px;text-align:left}
+#moremenu #btnHelp{grid-column:1/-1;text-align:center}
+#qnum{color:var(--cinnabar);font-weight:500}
+#moremenu .b.on{background:var(--ink);border-color:var(--ink);color:#fbfaf5}
+#moremenu .b.on #qnum{color:#f3d9b0}
+
+/* ═══════════ 右侧：图面 ═══════════ */
+#stage{
+  position:relative;flex:1;overflow:hidden;cursor:grab;background:var(--paper-1);
+}
+#stage.drag{cursor:grabbing}
+#stage.edit{cursor:crosshair}
+#world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+#world img{
+  display:block;user-select:none;-webkit-user-drag:none;image-rendering:auto;
+  background:var(--paper);
+}
+.mk{
+  position:absolute;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;
+  background:var(--cinnabar);border:var(--mkbw,1.5px) solid var(--paper);
+  box-shadow:0 0 0 1px rgba(110,40,32,.22);
+  cursor:pointer;transform:scale(var(--mks,1));transform-origin:center;
+  transition:box-shadow .12s;
+}
+.mk.auto{
+  width:auto;height:auto;margin:0;border-radius:1px;transform:none;
+  background:rgba(168,52,42,.03);border:1px dashed rgba(160,90,76,.55);box-shadow:none;
+}
+.mk.auto:hover{background:rgba(168,52,42,.10)}
+.mk.auto.sel{
+  background:rgba(43,41,38,.06);border:1px solid var(--ink);box-shadow:0 0 0 1px rgba(43,41,38,.30);
+}
+/* 选中态：墨色实心 + 纸色环。不用蓝 —— 蓝要留给「已提交待审」，避免两义 */
+.mk.sel{
+  background:var(--ink);border-color:var(--paper);
+  box-shadow:0 0 0 2px var(--paper),0 0 0 3.5px var(--ink);
+}
+.mk:hover{box-shadow:0 0 0 6px rgba(168,52,42,.13),0 0 0 1px rgba(110,40,32,.28)}
+.mk.moving{cursor:grabbing;opacity:.85}
+#world .mk.fx{box-shadow:0 0 0 2px var(--gold),0 0 9px 3px rgba(168,135,60,.30)}   /* 待提交：金环（近看时） */
+/* 待提交 / 待审 的固定大小外圈：不随缩放变糊，远看也认得出 */
+.mk .ring{
+  position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;
+  border:2px solid var(--gold);border-radius:50%;
+  transform:scale(var(--inv,1));transform-origin:center;display:none;pointer-events:none;
+}
+.mk.fx .ring{display:block}
+.mk.fx.sel .ring{border-color:var(--gold);box-shadow:0 0 0 1px rgba(168,135,60,.45)}
+.mk.sub .ring{display:block;border-color:rgba(91,125,140,.8);border-style:dashed}
+.mk.ig .ring{display:none!important}
+.mk.sub{box-shadow:0 0 0 1.5px rgba(91,125,140,.65),0 0 0 2.5px var(--paper)}  /* 已提交待审：蓝环 */
+#world .mk.sel.fx{box-shadow:0 0 0 2px var(--paper),0 0 0 3.5px var(--ink),0 0 0 5px var(--gold)}
+.mk.ig{display:none !important}
+body.showig .mk.ig{display:block !important;opacity:.3}
+/* 远看时红点变淡变细，但一直看得见 —— 浓度由 JS 按倍率写进 --mkop，
+   不再一刀切 .45（那样全图时几乎找不到点）。悬停/选中/待提交始终全实。 */
+.mk{opacity:var(--mkop,.72)}
+.mk:hover,.mk.sel,.mk.fx,.mk.sub{opacity:1}
+.mk.ig{opacity:.3}
+/* 标注文字：独立于缩放图层。
+   放在 #world 里会被 scale(s) 连带缩放，反向缩放只能让「字号」回到 11px，
+   但栅格化发生在缩放前的坐标系 —— 文字实际按 11/s 像素画好再放大 s 倍，越放大越糊。
+   移到不缩放的图层、按屏幕坐标定位，才是真正按原生分辨率绘制。 */
+#labels{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:3}
+/* 旗标（B03）：朱砂实底 + 纸色字 + 2px 圆角 + 一圈纸色细沿 + 一个指着锚点的小箭头。
+   底色块是必须的：这图上细碎线太多，纯字加描边会被线淹没（试过，糊成一片），
+   加光晕会变成白斑。实底反而最干净——它自己就是一层面，不跟图线抢。
+   外沿只 1px 纸色，作用是让朱砂块和碑刻钩线分开，不做投影。 */
+#labels .lb{
+  position:absolute;left:0;top:0;display:none;
+  padding:.26em .5em .3em;border-radius:2px;
+  background:#a8342a;color:#fdfbf3;
+  font:600 16px/1.18 "PingFang SC","Hiragino Sans GB","Source Han Sans SC","Noto Sans SC",system-ui,sans-serif;
+  letter-spacing:.05em;white-space:nowrap;
+  box-shadow:0 0 0 1px rgba(251,250,245,.92);
+  transform-origin:0 0;
+  will-change:transform;
+}
+/* 竖排：writing-mode 竖排 + 字正立。窄条占地小，密集碑刻区用它挡得最少，
+   而且能贴在点的左右两侧，让箭头横向指过去——横排做不到这一点。 */
+#labels .lb.v{
+  writing-mode:vertical-rl;text-orientation:upright;
+  padding:.5em .26em .5em;line-height:1.05;letter-spacing:.12em;
+}
+#labels .lb.sel{background:#2b2926;box-shadow:0 0 0 1px #fbfaf5,0 0 0 2.5px rgba(43,41,38,.55)}
+/* 箭头：贴旗标朝向锚点的那一侧，尖指向锚点。宽高按 em，字号一变自动跟着缩放。
+   根部要往主体里多扎进 0.18em —— 否则主体的 1px 纸色外沿会在箭头根部拉出一道白缝。 */
+#labels .lb .tip{position:absolute;width:.68em;height:.68em;background:inherit;pointer-events:none}
+#labels .lb[data-d="n"] .tip{bottom:-.5em;left:50%;margin-left:-.34em;clip-path:polygon(0 0,100% 0,50% 100%)}
+#labels .lb[data-d="s"] .tip{top:-.5em;left:50%;margin-left:-.34em;clip-path:polygon(0 100%,100% 100%,50% 0)}
+#labels .lb[data-d="e"] .tip{left:-.5em;top:50%;margin-top:-.34em;clip-path:polygon(100% 0,100% 100%,0 50%)}
+#labels .lb[data-d="w"] .tip{right:-.5em;top:50%;margin-top:-.34em;clip-path:polygon(0 0,0 100%,100% 50%)}
+body.showauto .mk.auto{display:block}
+.mk.auto{display:none}
+body.picking #stage{cursor:crosshair}
+#pickhint{
+  position:absolute;left:50%;top:16px;transform:translateX(-50%);display:none;z-index:9;
+  background:var(--ink);color:#fbfaf5;font-size:11.5px;padding:6px 14px;border-radius:2px;
+  pointer-events:none;letter-spacing:.03em;
+}
+#hud{position:absolute;right:16px;top:16px;display:flex;flex-direction:column;gap:6px;z-index:5}
+#hud button{
+  width:30px;height:30px;border:1px solid rgba(215,210,194,.85);border-radius:2px;cursor:pointer;
+  font-size:13px;color:var(--ink-2);line-height:1;background:rgba(251,250,245,.9);
+  transition:border-color .12s,color .12s,background .12s;
+}
+#hud button:hover{border-color:var(--ink-3);color:var(--ink);background:rgba(251,250,245,.98)}
+#zfit.on{background:var(--ink);color:#fbfaf5;border-color:var(--ink)}
+#coord{
+  position:absolute;left:16px;bottom:16px;font:10.5px ui-monospace,monospace;color:var(--ink-3);
+  background:rgba(251,250,245,.9);border:1px solid rgba(215,210,194,.7);border-radius:2px;
+  padding:3px 7px;z-index:5
+}
+#toast{
+  position:absolute;left:50%;top:18px;transform:translateX(-50%);
+  background:rgba(43,41,38,.94);color:#f7f5ee;font-size:11.5px;padding:7px 16px;border-radius:2px;opacity:0;
+  letter-spacing:.02em;transition:opacity .2s;pointer-events:none;z-index:9
+}
+#toast.on{opacity:1}
+
+/* 检视面板：同一张纸，只用发丝线立起来 —— 不用投影，不在图上压出一块阴影 */
+#insp{
+  position:absolute;right:16px;bottom:16px;width:302px;
+  background:var(--paper-0);border:1px solid var(--line-2);border-radius:2px;
+  box-shadow:0 1px 10px rgba(60,52,40,.05);
+  padding:14px;display:none;z-index:6;max-height:calc(100% - 32px);overflow:auto;
+}
+#insp h3{margin:0 0 10px;font:500 13px/1.4 var(--serif);display:flex;align-items:center;gap:6px;
+  color:var(--ink);letter-spacing:.06em;padding-bottom:8px;border-bottom:1px solid var(--line)}
+#insp h3 span{font:9.5px ui-monospace,monospace;color:var(--ink-4);font-weight:400;letter-spacing:0}
+#mag{
+  position:relative;height:166px;border:1px solid var(--line-2);border-radius:1px;
+  background-color:#fbfaf4;background-repeat:no-repeat;overflow:hidden;
+}
+#mag i{position:absolute;background:rgba(168,52,42,.45);pointer-events:none}
+#mag .cx{left:0;right:0;top:50%;height:1px}
+#mag .cy{top:0;bottom:0;left:50%;width:1px}
+#mag .bx{position:absolute;border:1px solid rgba(91,125,140,.55);border-radius:1px;pointer-events:none}
+#magbar{display:flex;align-items:center;gap:6px;margin:6px 0 0;font-size:10.5px;color:var(--ink-3)}
+#magbar button{
+  border:1px solid var(--line-2);background:var(--paper-2);border-radius:2px;cursor:pointer;
+  font-size:11px;line-height:1;padding:3px 7px;color:var(--ink-2);font-family:inherit
+}
+#magbar button:hover{border-color:var(--ink-3);color:var(--ink)}
+#magbar .grow{flex:1;text-align:right;letter-spacing:.02em;font-family:ui-monospace,monospace}
+#insp label{display:block;font-size:10.5px;color:var(--ink-3);margin:9px 0 3px;letter-spacing:.03em}
+#insp input,#insp select,#insp textarea{
+  width:100%;font:12.5px "PingFang SC",sans-serif;padding:5px 7px;border:1px solid var(--line-2);
+  border-radius:2px;background:var(--paper-2);color:var(--ink);outline:none;
+}
+#insp input:focus,#insp select:focus,#insp textarea:focus{border-color:var(--ink-3)}
+#insp textarea{resize:vertical;min-height:42px;line-height:1.6}
+/* 旗标方位盘：3×3，按哪儿旗标就摆到点的哪个方向；中间「自」＝交给程序挑。
+   箭头由方位决定，所以调方位＝调箭头指向，两者是同一件事。 */
+.flagrow{display:flex;flex-direction:column;gap:3px}
+.dirpad{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;width:150px}
+.dirpad button,.writepad button{
+  width:auto;height:23px;padding:0;cursor:pointer;
+  border:1px solid var(--line-2);border-radius:2px;background:var(--paper-2);
+  color:var(--ink-2);font:12px/1 "PingFang SC",sans-serif;
+}
+.dirpad button:hover,.writepad button:hover{border-color:var(--ink-3);color:var(--ink)}
+.dirpad button.on,.writepad button.on{background:var(--cinnabar);border-color:var(--cinnabar);color:#fdfbf3}
+.dirpad button[data-d="a"]{font-size:11px}
+.writepad{display:grid;grid-template-columns:1fr 1fr;gap:2px;width:150px}
+.writepad button{font-size:12px;letter-spacing:.06em}
+#flagInfo{font-size:10px;color:var(--ink-3)}
+#insp .acts{display:flex;gap:6px;margin-top:8px}
+#insp .acts button{flex:1;font-size:11.5px;padding:5px}
+#help{font-size:10px;color:var(--ink-4);line-height:1.7;margin-top:9px}
+#insp .posrow{display:flex;gap:6px;margin-bottom:6px}
+#insp .posrow input{flex:1;min-width:0;padding:3px 6px;font:11px ui-monospace,monospace}
+#posInfo{font-weight:400;color:var(--gold);letter-spacing:0}
+#posHelp{font-size:10px;color:var(--ink-4);line-height:1.7;margin:2px 0 4px}
+
+/* ═══════════ 弹层：一张素纸 ═══════════ */
+.modal{
+  position:fixed;inset:0;background:rgba(43,40,34,.24);z-index:120;display:none;
+  align-items:center;justify-content:center;padding:16px;
+}
+.modal.on{display:flex}
+.sheet{
+  width:min(700px,100%);max-height:86vh;overflow:auto;
+  background:var(--paper-0);
+  color:var(--ink);
+  border:1px solid var(--line-2);border-radius:3px;
+  box-shadow:0 16px 60px rgba(50,44,34,.16);
+  padding:20px 22px;
+}
+.sheet{position:relative;overflow:auto}
+.sheet::before{
+  content:"";position:absolute;inset:0;pointer-events:none;border-radius:3px;
+  background-image:var(--noise);opacity:.03;mix-blend-mode:multiply;
+}
+.sheet h2{
+  margin:0 0 14px;font:500 15.5px/1.4 var(--serif);letter-spacing:.1em;color:var(--ink);
+  display:flex;align-items:center;gap:8px;padding-bottom:10px;
+  border-bottom:1px solid var(--line);
+}
+.sheet h2 span{font:10.5px ui-monospace,monospace;color:var(--ink-4);font-weight:400;letter-spacing:0}
+.sheet h2 button{
+  margin-left:auto;border:1px solid transparent;background:transparent;color:var(--ink-3);
+  font-size:16px;line-height:1;cursor:pointer;border-radius:2px;padding:2px 6px;
+}
+.sheet h2 button:hover{background:#f3f1e9;color:var(--ink)}
+.sheet button.b{
+  background:var(--paper-2);border-color:var(--line-2);color:var(--ink-2);
+}
+.sheet button.b:hover{border-color:var(--ink-3);color:var(--ink);background:#fff}
+.sheet button.b.primary{background:var(--ink);border-color:var(--ink);color:#fbfaf5}
+.sheet button.b.primary:hover{background:#1e1d1a;border-color:#1e1d1a}
+#helpbox .sheet{width:min(600px,100%)}
+#desk .sheet{width:min(720px,100%)}
+#desk .tabs{display:flex;gap:0;margin:-4px 0 12px;border-bottom:1px solid var(--line)}
+#desk .tab{
+  font:12px/1.4 "PingFang SC",sans-serif;padding:7px 13px;cursor:pointer;background:none;
+  border:0;border-bottom:2px solid transparent;color:var(--ink-3);letter-spacing:.04em;
+}
+#desk .tab:hover{color:var(--ink-2)}
+#desk .tab.on{color:var(--ink);border-bottom-color:var(--cinnabar)}
+#desk .tab b{color:var(--cinnabar);font-weight:500;font-family:ui-monospace,monospace;font-size:10.5px}
+#desk .tab.on b{color:var(--cinnabar)}
+#desk .sect{font-size:9.5px;letter-spacing:.09em;color:var(--ink-4);margin:12px 0 6px}
+#desk .sect:first-child{margin-top:0}
+.drow{
+  display:flex;gap:9px;align-items:baseline;padding:8px 10px;border:1px solid var(--line);
+  border-radius:2px;margin-bottom:5px;background:#fdfcf8;cursor:pointer;
+}
+.drow:hover{background:#f7f5ec;border-color:var(--line-2)}
+.drow .nm{font:13.5px/1.45 var(--serif);color:var(--ink);letter-spacing:.03em;flex:0 0 auto}
+.drow .nm.empty{color:var(--ink-4)}
+.drow .ds{
+  flex:1;min-width:0;font-size:10.5px;color:var(--ink-3);line-height:1.5;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.drow .dt{flex:0 0 auto;font:9.5px ui-monospace,monospace;color:var(--ink-4)}
+.drow .st{
+  flex:0 0 auto;font-size:9px;letter-spacing:.05em;padding:1px 4px;border-radius:1px;
+  border:1px solid currentColor;
+}
+.drow .st.wait{color:var(--blue)}
+.drow .st.ok{color:#5d7a4e}
+.drow .st.no{color:var(--cinnabar)}
+.drow .st.dirty{color:var(--gold)}
+#deskBody .empty{
+  padding:26px 10px;text-align:center;font-size:12px;color:var(--ink-4);line-height:1.9;
+}
+#deskBody .empty b{display:block;color:var(--ink-2);font-weight:500;font-size:13px;margin-bottom:4px}
+#deskBody .prop{border:1px solid var(--line);border-radius:2px;padding:10px 11px;margin-bottom:7px;background:#fdfcf8}
+#deskBody .prop .hd{display:flex;align-items:baseline;gap:7px;margin-bottom:5px}
+#deskBody .prop .hd b{font:500 13.5px/1.45 var(--serif);color:var(--ink);letter-spacing:.03em}
+#deskBody .prop .hd .id{font:9.5px ui-monospace,monospace;color:var(--ink-4)}
+#deskBody .prop .hd .tm{margin-left:auto;font:9.5px ui-monospace,monospace;color:var(--ink-4)}
+#deskBody .prop .df{font-size:11px;line-height:1.7;color:var(--ink-2)}
+#deskBody .prop .rs{font-size:10px;color:var(--ink-4);margin-top:4px}
+#deskBody .prop .acts{display:flex;gap:6px;margin-top:8px}
+#deskBody .prop .acts button{flex:0 0 auto;font-size:11px;padding:4px 10px}
+#tip{padding:0;margin:0 0 12px;font-size:12px;color:var(--ink-2);line-height:1.95}
+#tip b{color:var(--ink);font-weight:500;letter-spacing:.03em}
+#verline{font-size:10.5px;color:var(--ink-4);border-top:1px solid var(--line);
+  margin-top:8px;padding-top:8px;letter-spacing:.02em;line-height:1.7}
+#verline b{color:var(--ink-3);font:500 10.5px ui-monospace,SFMono-Regular,Menlo,monospace}
+#authrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px;border-radius:2px;
+  background:#f7f5ec;margin-bottom:12px}
+#claimrow{display:none;flex-wrap:wrap;gap:6px;align-items:center;padding:10px;border-radius:2px;
+  background:#f7f5ec;margin-bottom:12px}
+#keyrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px;border-radius:2px;
+  background:#f7f5ec;margin-bottom:8px}
+#claimrow input,#authrow input,#keyrow input{font:12px "PingFang SC",sans-serif;padding:5px 7px;
+  border:1px solid var(--line-2);border-radius:2px;outline:none;background:#fff;min-width:0;color:var(--ink)}
+#claimrow input:focus,#authrow input:focus,#keyrow input:focus{border-color:var(--ink-3)}
+#claimrow input{flex:1 1 150px}
+#authEmail{flex:1 1 150px}
+#authCode{flex:0 0 100px}
+#pjKey{flex:1 1 150px;letter-spacing:.16em}
+#authrow .b,#keyrow .b{font-size:11.5px;padding:5px 9px}
+#claimrow span,#keyrow span{font-size:11px;color:var(--ink-3);flex:1 1 100%}
+#authMsg,#keyMsg{font-size:11px;color:var(--ink-3);line-height:1.6;flex:1 1 100%}
+#authMsg.bad,#keyMsg.bad{color:var(--cinnabar)}
+#authrow.off{display:none}
+.prop{border:1px solid var(--line);border-left:2px solid #cfc7b0;border-radius:2px;
+  background:#fff;padding:11px 12px;margin-bottom:8px}
+.prop .hd{display:flex;align-items:baseline;gap:7px;font-size:12.5px}
+.prop .hd b{font:500 13px/1.4 var(--serif);letter-spacing:.05em;color:var(--ink)}
+.prop .hd .id{font:9.5px ui-monospace,monospace;color:var(--ink-4)}
+.prop .hd .tm{margin-left:auto;font:9.5px ui-monospace,monospace;color:var(--ink-4)}
+.prop .df{font-size:12px;margin-top:6px;color:var(--ink-2);line-height:1.8}
+.prop .df s{color:var(--ink-4)}
+.prop .df em{font-style:normal;color:var(--cinnabar);font-weight:500}
+.prop .rs{font-size:11.5px;color:var(--ink-3);margin-top:4px;line-height:1.7}
+.prop .acts{display:flex;gap:6px;margin-top:9px}
+.prop .acts .b{font-size:11.5px;padding:4px 12px}
+.prop.why{background:#fbfaf4}
+.prop .vtag{font-size:9.5px;border:1px solid var(--line-2);border-radius:1px;padding:1px 6px;color:var(--ink-3)}
+.prop .vtag.ok{color:#5b7a4a;border-color:#cddbc2;background:#f4f7f1}
+.prop .vtag.no{color:#95533f;border-color:#e5cdc4;background:#fbf4f1}
+
+/* 更多按钮的待审提示点 / 说明弹层底部维护区 */
+#btnMore{position:relative}
+#btnMore.alert::after{
+  content:"";position:absolute;top:6px;right:6px;width:5px;height:5px;border-radius:50%;
+  background:var(--cinnabar)
+}
+.mnt{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;
+  border-top:1px solid var(--line)}
+.mnt span{font-size:10.5px;color:var(--ink-4)}
+.mnt .b{font-size:10.5px;padding:3px 8px}
+.sheet h2 button.b{font-size:11px;line-height:1.4;padding:3px 9px;color:var(--ink-2)}
+.sheet h2 #btnAuth{margin-left:auto}
+.sheet h2 #btnAuth.on{background:var(--ink);border-color:var(--ink);color:#fbfaf5}
+
+/* 提交说明（commit message） */
+#cmList{list-style:none;margin:0 0 14px;padding:0;max-height:30vh;overflow:auto}
+#cmList li{
+  font-size:12px;padding:8px 10px;border-left:1px solid var(--line-2);
+  background:#f7f5ec;margin-bottom:5px;line-height:1.8;color:var(--ink-2)
+}
+#cmList li b{font-family:var(--serif);letter-spacing:.04em;font-weight:500;color:var(--ink)}
+#cmList .cid{font:9.5px ui-monospace,monospace;color:var(--ink-4);margin-left:8px}
+#cmList .more{color:var(--ink-4);border-left-color:var(--line-2);background:none}
+.cml{display:block;font-size:10.5px;color:var(--ink-3);margin:0 0 4px;letter-spacing:.03em}
+#cmMsg{
+  width:100%;min-height:66px;font:12.5px/1.75 "PingFang SC",sans-serif;padding:8px 10px;
+  border:1px solid var(--line-2);border-radius:2px;background:#fff;color:var(--ink);
+  resize:vertical;outline:none;margin-bottom:12px;font-family:inherit
+}
+#cmMsg:focus{border-color:var(--ink-3)}
+/* 署名行：一处填写，不重复输入 */
+.cmwho{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-3);margin:0 0 14px}
+.cmwho b{font-weight:500;color:var(--ink)}
+.cmwho button{
+  margin-left:auto;border:1px solid var(--line-2);background:transparent;border-radius:2px;
+  font-size:10.5px;padding:2px 8px;color:var(--ink-3);cursor:pointer;font-family:inherit
+}
+.cmwho button:hover{border-color:var(--ink-3);color:var(--ink)}
+.cmacts{display:flex;gap:8px;justify-content:flex-end}
+.cmnote{font-size:10.5px;color:var(--ink-4);margin-top:10px;line-height:1.7}
+
+/* ═══════════ 窄屏：侧栏变抽屉，但搜索必须留在画布上 ═══════════ */
+#menubtn{display:none}
+#scrim{display:none}
+#mSearch{display:none}
+#q2hit{display:none}
+@media (max-width: 700px){
+  #side{
+    position:fixed;left:0;top:0;bottom:0;width:88%;max-width:340px;z-index:70;
+    transform:translateX(-102%);transition:transform .24s ease;
+    box-shadow:8px 0 32px rgba(60,52,40,.12)
+  }
+  body.panel #side{transform:none}
+  #scrim{
+    display:block;position:fixed;inset:0;background:rgba(43,40,34,.20);z-index:65;
+    opacity:0;pointer-events:none;transition:opacity .24s
+  }
+  body.panel #scrim{opacity:1;pointer-events:auto}
+  #menubtn{
+    display:flex;align-items:center;gap:5px;position:absolute;left:14px;top:14px;z-index:8;
+    height:32px;padding:0 12px;border:1px solid var(--line-2);border-radius:2px;
+    background:rgba(251,250,245,.94);color:var(--ink-2);font-size:11.5px;cursor:pointer;font-family:inherit
+  }
+  /* 侧栏收进抽屉后，搜索框不能跟着消失：在画布上留一条常驻搜索行 */
+  #mSearch{
+    display:flex;align-items:center;position:absolute;left:88px;top:14px;z-index:8;
+    width:min(52vw,320px);height:32px;
+    background:rgba(251,250,245,.94);border:1px solid var(--line-2);border-radius:2px;
+    transition:border-color .12s,background .12s;
+  }
+  #mSearch:focus-within{border-color:var(--ink-3);background:#fff}
+  #mSearch input{
+    flex:1;min-width:0;height:100%;padding:0 4px 0 10px;border:0;outline:none;background:none;
+    font:12.5px/1 "PingFang SC",sans-serif;color:var(--ink);font-family:inherit;
+  }
+  #mSearch input::placeholder{color:var(--ink-4)}
+  #mSearch .mclr{
+    flex:0 0 22px;height:100%;border:0;background:none;color:var(--ink-4);
+    font-size:14px;line-height:1;cursor:pointer;display:none;
+  }
+  /* 窄屏下结果列表在抽屉里，画布上得有个「搜到了多少」的回执 */
+  #q2hit{
+    position:absolute;left:88px;top:50px;z-index:8;pointer-events:none;
+    font:10.5px/1.5 "PingFang SC",sans-serif;color:var(--ink-2);letter-spacing:.02em;
+    background:rgba(251,250,245,.92);border:1px solid var(--line);border-radius:2px;
+    padding:1px 6px;
+  }
+  #q2hit.on{display:block}
+  body.panel #q2hit{display:none!important}
+  body.panel #mSearch{display:none}
+  #stats{gap:6px 10px}
+  #insp{left:10px;right:10px;bottom:10px;width:auto;max-height:64%}
+  #hud{top:14px;right:10px}
+  #coord{display:none}
+  #mag{height:130px}
+  body.panel #insp{display:none!important}
+  body.panel #commitbar{display:none!important}
+}
+
+</style>
+</head>
+<body>
+<aside id="side">
+  <div id="stelecap">
+    <div class="caprow">
+      <span id="seal">平江</span>
+      <h1>平江圖<small>南宋绍定二年（1229）苏州城图 · 点位 <span id="tot">0</span></small></h1>
+    </div>
+    <div id="who"><i class="dot"></i><span id="whoTxt">正在加载…</span><button id="btnName" title="改署名">署名</button></div>
+  </div>
+
+  <div class="searchwrap">
+    <input id="q" placeholder="搜地名或类型：桥 / 门 / 寺观 / 坊巷" autocomplete="off">
+    <button id="qclear" title="清空">×</button>
+  </div>
+  <div id="chips"></div>
+  <details id="legend">
+    <summary class="lgT"><span>图上符号 · 已核 <b id="lgN">0</b> / 待认 <b id="lgR">0</b></span></summary>
+    <div class="lg" id="lg-dot"><i></i><span><b>红点</b>＝名字已认定，可直接读。点它改名或挪位。</span></div>
+    <div class="lg" id="lg-box"><i></i><span><b>虚线框</b>＝<em>还没认出名字</em>，框住碑上文字等你判读。按<b>「候选框」</b>打开。</span></div>
+    <div class="lg" id="lg-gold"><i></i><span><b>金环</b>＝你改过，还没提交审核。</span></div>
+    <div class="lg" id="lg-sub"><i></i><span><b>蓝色虚环</b>＝已提交，等审核。</span></div>
+    <div class="lg" id="lg-sel"><i></i><span><b>黑点</b>＝当前正在看的这一点。</span></div>
+  </details>
+
+  <details id="blockbox"><summary>分块进度 · 点格跳转</summary><div id="blocks"></div></details>
+  <div id="list"></div>
+
+  <div id="commitbar">
+    <span id="cbTxt">有 <b>0</b> 处改动待提交</span>
+    <button class="b primary" id="cbGo" title="把改动送进待审队列，审核通过后所有人可见">提交审核</button>
+  </div>
+
+  <div id="actions">
+    <button class="b primary" id="btnEdit" title="进入编辑模式：改名字、拖红点、双击空白处新增">标注模式</button>
+    <button class="b" id="btnDesk" title="查看我的标注内容、待审批队列与审核结果">工作台</button>
+    <button class="b" id="btnAuto" title="把还没认出名字的点位全部显示出来">候选框</button>
+    <button class="b" id="btnMore" title="更多工具">⋯</button>
+  </div>
+
+  <div id="moremenu">
+    <button class="b" id="btnNext" title="进入编辑，从视野中心逐个标注">下一个待标点</button>
+    <button class="b" id="btnQueue" title="看所有人提交的修订">待审 <b id="qnum">0</b></button>
+    <button class="b" id="btnShare" title="复制当前视野的链接">复制链接</button>
+    <button class="b on" id="btnLbl" title="关掉后图上只留点，只看碑刻原字">标注名：开</button>
+    <button class="b" id="btnFlagAll" title="没单独设过排布的点位，统一改成竖排或横排">全体旗标：横排</button>
+    <button class="b" id="btnFlagReset" title="清掉所有单独调过的方位和排布，全部回到自动">旗标复位</button>
+    <button class="b" id="btnExport">导出数据</button>
+    <button class="b" id="btnHelp">说明</button>
+  </div>
+</aside>
+
+<main id="stage">
+  <!-- ═══ 模板提示：直接双击本文件看不到地图，需打开构建产物 ═══
+       构建产物：../平江图高清/平江图_地点数据库.html（单文件，底图内嵌）
+                 ../平江图在线/index.html（需与 map/ 同级）
+       本段只在占位符未被替换时显示，build.py 替换后会连同下面这一行一起删除。 -->
+  <div id="tplWarn"><b>这是模板文件，不是网页。</b><br>请打开构建产物：<br>
+    <code>../平江图高清/平江图_地点数据库.html</code>（推荐，单文件，底图已内嵌）<br>
+    或 <code>../平江图在线/index.html</code>（须与 map/ 文件夹同级）</div>
+  <div id="world"><img id="map" src="__MAPPREVIEW__" data-mid="__MAPMID__" data-full="__MAPFULL__" alt="南宋平江图（苏州城图）" width="4414" height="7064" decoding="async" fetchpriority="high"></div>
+  <!-- 文字层：不参与缩放，按屏幕坐标摆放，任何倍率下都按原生分辨率绘制 -->
+  <div id="labels"></div>
+  <button id="menubtn" aria-label="打开目录">☰ 目录</button>
+  <div id="mSearch">
+    <input id="q2" placeholder="搜地名或类型" autocomplete="off" aria-label="搜索地名或类型">
+    <button class="mclr" id="q2clear" aria-label="清空搜索">×</button>
+  </div>
+  <div id="q2hit"></div>
+  <div id="scrim"></div>
+  <div id="hud">
+    <button id="zin">＋</button>
+    <button id="zout">－</button>
+    <button id="zfit" title="全图（只看格局；读碑上的字请用滚轮放大）">⤢</button>
+  </div>
+  <div id="coord">—</div>
+  <div id="insp">
+    <h3 id="inspTitle">点位<span></span></h3>
+    <div id="mag" title="放大镜：此处即图上原字"><i class="cx"></i><i class="cy"></i><span class="bx"></span></div>
+    <div id="magbar">
+      <button id="magOut" title="缩小">－</button>
+      <button id="magIn" title="放大">＋</button>
+      <button id="magWide" title="宽视野 / 大字">视野</button>
+      <span class="grow" id="magZ">2.15×</span>
+    </div>
+    <label>名称</label>
+    <input id="fName" placeholder="读不清就留空，按 Esc 跳过">
+    <label>类型</label>
+    <select id="fType"></select>
+    <label>备注 / 考据</label>
+    <textarea id="fNote" placeholder="出处、异名、今址对照"></textarea>
+    <label>位置 <span id="posInfo"></span></label>
+    <div class="posrow">
+      <input id="fX" type="number" step="1" title="图上 x 坐标">
+      <input id="fY" type="number" step="1" title="图上 y 坐标">
+    </div>
+    <div class="acts">
+      <button class="b" id="fLoc">居中</button>
+      <button class="b" id="fSnap" title="把红点吸到最近的文字标签框正中（最准）">贴近原字</button>
+      <button class="b" id="fPick" title="点图上正确的位置">重新定位</button>
+    </div>
+    <div id="posHelp">也可以直接拖动红点；选中后方向键微调 1px，⇧+方向键 10px</div>
+    <label>旗标方位 <span id="flagInfo"></span></label>
+    <div class="flagrow" id="flagPad">
+      <div class="dirpad">
+        <button data-d="n" title="旗标放在点的上方，三角箭头朝下指向点">↑</button>
+        <button data-d="s" title="旗标放在点的下方，三角箭头朝上指向点">↓</button>
+        <button data-d="w" title="旗标放在点的左侧，三角箭头朝右指向点">←</button>
+        <button data-d="e" title="旗标放在点的右侧，三角箭头朝左指向点">→</button>
+        <button data-d="a" title="自动：在上下左右里挑一个图上有空位的，撞到画布边缘会自己换边">自</button>
+      </div>
+      <div class="writepad">
+        <button data-w="h" title="横排：字横着走，压得矮但占宽度">横</button>
+        <button data-w="v" title="竖排：字立起来，窄条占地小，适合放在左右两侧">竖</button>
+      </div>
+    </div>
+    <div class="acts">
+      <button class="b" id="fIgnore" title="这不是地名（城墙砖、栏杆等），以后不再出现">不是地名</button>
+      <button class="b" id="fDel">删除</button>
+      <button class="b" id="fSkip" title="存下这个，再飞到下一个待标点">下一个待标点 ›</button>
+    </div>
+    <div class="acts">
+      <button class="b primary" id="fOk" title="只保存，留在原地：改动会进左侧「待提交」">保存 ⏎</button>
+    </div>
+    <div id="help">改名：直接改，⏎ 存 ·　⇧⏎ 不是地名　·　⌘Z 撤销</div>
+  </div>
+  <div id="pickhint">点图上正确的位置 · Esc 取消</div>
+  <div id="toast"></div>
+</main>
+
+<div class="modal" id="helpbox">
+  <div class="sheet">
+    <h2>怎么看、怎么改 <button id="helpclose" title="关闭">×</button></h2>
+    <div id="tip"><b>一、图上的点＝什么</b><br>
+每一处地名在图上是一个点位，<b>只有四种状态</b>：<br>
+<b>红点</b>　名字已经认定，可以直接读。点它改名、改类型、挪位置。<br>
+<b>虚线框</b>　<em>还没认出名字</em>。框住碑上那片文字，等你判读。按左下<b>「候选框」</b>把它们全叫出来。<br>
+<b>金环</b>　你改过，还没提交审核。<br>
+<b>蓝色虚环</b>　已提交，等审核人点头。<br>
+<b>黑点</b>　当前正在看的这一点，右侧面板显示的就是它。<br>
+（红点和虚线框不是两种不同的东西，而是<b>同一处点位「认出来了」和「还没认出来」</b>的两种状态。金环和蓝环可以叠加出现：金环＝你改的还没交，蓝环＝已交在等。）<br><br>
+<b>二、怎么标注</b><br>
+按<b>「标注模式」</b>→ 点红点或虚线框，改名字／类型／备注；拖动改坐标，或按「重新定位」；双击地图空白处可新增。<br>
+按<b>「保存 ⏎」只存、不动视野</b>，留在原地；想连着标下一个按<b>「下一个待标点 ›」</b>。<br>
+那个位置根本不是地名（城墙砖、栏杆纹样），按<b>「不是地名」</b>排除。<br>
+面板里的<b>放大镜</b>放大的是碑上原字 —— 照着它写名字。<br><br>
+<b>三、协作与审批</b><br>
+改过的地方会自动套<b>金环</b>、左侧列表挂<b>「待提交」</b>小签，左下角出现「有 N 处改动待提交」。<br>
+按<b>「提交审核」</b>并附一句依据（例：碑上作「和豐坊」，横排右起读），改动进入公开待审队列，<b>提交不需要登录</b>。<br>
+审核人在<b>「工作台 → 待审批」</b>里逐条对比旧值／新值，<b>通过</b>即写进公开数据，所有人刷新可见；<b>驳回</b>则原文不动。<br>
+<b>「工作台」</b>四个标签：我的标注（我改了什么）、待审批（等审核的）、已通过、已驳回。<br>
+<b>想当审核人</b>：在待审弹层里输<b>维护者口令</b>即可（不发邮件，直接进审核），或走「用邮箱」收验证码再输授权码开通。</div>
+    <div style="font-size:11px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:10px">
+      快捷键：<b>/</b> 聚焦搜索　·　<b>⌘Z</b> 撤销　·　<b>⌘S</b> 导出　·　方向键微调红点
+    </div>
+    <div id="verline">
+      平江图地名库 <b>v__VERSION__</b>　·　构建 __BUILD__　·　<span id="verCnt">点位 —</span>
+    </div>
+    <div class="mnt">
+      <span>本机数据（一般用不到）</span>
+      <button class="b" id="btnImport">导入 JSON</button>
+      <button class="b" id="btnReset">重置本机</button>
+      <input type="file" id="fileIn" accept=".json" hidden>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="commitbox">
+  <div class="sheet">
+    <h2>提交审核 <span id="cmCount"></span><button id="cmClose" title="关闭">×</button></h2>
+    <ul id="cmList"></ul>
+    <label class="cml" for="cmMsg">提交说明 —— 审核的人会看到</label>
+    <textarea id="cmMsg" placeholder="例：碑上作「和豐坊」，横排右起读；或：这一处红点应落在桥心。"></textarea>
+    <div class="cmwho">署名 <b id="cmWho">匿名</b><button type="button" id="cmWhoChg">修改</button></div>
+    <div class="cmacts">
+      <button class="b" id="cmCancel">取消</button>
+      <button class="b primary" id="cmGo">提交，等审核</button>
+    </div>
+    <div class="cmnote">提交后进入公开的待审队列。审核通过即写入公开数据，所有人刷新可见；驳回则原文不变。</div>
+  </div>
+</div>
+
+<div class="modal" id="desk">
+  <div class="sheet wide">
+    <h2>工作台 <span id="deskSum"></span>
+      <button class="b" id="deskAuth" title="审核权需要登录后授予">审核登录</button>
+      <button id="deskClose" title="关闭">×</button></h2>
+    <div class="tabs" id="deskTabs">
+      <button class="tab on" data-tab="mine">我的标注</button>
+      <button class="tab" data-tab="pending">待审批 <b id="dPend">0</b></button>
+      <button class="tab" data-tab="done">已通过</button>
+      <button class="tab" data-tab="rej">已驳回</button>
+    </div>
+    <div id="deskBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="queue">
+  <div class="sheet">
+    <h2>待审修订 <span id="qcount"></span>
+      <button class="b" id="btnAuth" title="审核权需要登录后授予">审核登录</button>
+      <button id="qrefresh" title="刷新" style="font-size:11px;margin-left:2px">刷新</button>
+      <button id="qclose" title="关闭">×</button></h2>
+    <div id="keyrow">
+      <input id="pjKey" type="password" placeholder="维护者口令" autocomplete="current-password">
+      <button class="b primary" id="keyGo" type="button">口令直通</button>
+      <button class="b" id="keyOut" type="button" style="display:none">退出</button>
+      <button class="b" id="authToggle" type="button" title="邮箱验证码受发送频率限制，通常用不到">用邮箱</button>
+      <span id="keyMsg">口令直通不发邮件、没有频率限制，维护者持有。</span>
+    </div>
+    <div id="authrow" style="display:none">
+      <input id="authEmail" placeholder="审核用的邮箱" autocomplete="email">
+      <button class="b" id="authSend" type="button">发验证码</button>
+      <input id="authCode" placeholder="验证码" inputmode="numeric" autocomplete="one-time-code">
+      <button class="b primary" id="authGo" type="button">登录</button>
+      <button class="b" id="authOut" type="button">退出</button>
+      <span id="authMsg">内置邮件服务每分钟只放 1 封，容易撞限流。能用口令就别走这条路。</span>
+    </div>
+    <div id="claimrow">
+      <input id="claimCode" placeholder="审核授权码（向维护者索取）">
+      <button class="b" id="claimGo" type="button">开通审核权</button>
+      <span id="claimMsg">这个账号还没有审核权。</span>
+    </div>
+    <div id="qlist"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
+<script>
+const SEED = /*__DATA__*/[];
+const BLOCKS = /*__BLOCKS__*/[];
+const T2S = /*__T2S__*/{};                // 繁→简 单字表，仅覆盖本图用字
+const CLOUD = /*__CLOUD__*/null;          // {endpoint, oauthRelayBaseUrl, publishableKey} 由构建脚本注入
+const IW = 4414, IH = 7064;
+const TYPES = ["城门","桥梁","衙署","寺观","园林","塔","街巷","河道","坊","其他"];
+const LS = "pjmap.places.v2";
+const BASE = new Map(SEED.map(s => [s.id, s]));   // 基线：用来算「待提交」和「原来是什么」
+
+let places = [];
+let byId = new Map();
+let selId = null;
+let filterType = "全部";      // 状态：全部 / 待命名 / 已命名 / 已忽略 / 待提交 / 待审
+let filterCat  = "";          // 类型：桥梁 / 寺观 …（空＝不限）。与状态各自独立，可叠加
+let q = "";
+let magZ = 2.15;
+const undoStack = [];
+let snapOwner = null;
+
+const stage = document.getElementById("stage");
+const world = document.getElementById("world");
+const labelLayer = document.getElementById("labels");
+const labelMap = new Map();            // id → 文字元素（文字在 #labels，不在 #world）
+const mapImg = document.getElementById("map");
+const listEl = document.getElementById("list");
+const insp = document.getElementById("insp");
+const mag = document.getElementById("mag");
+const fName = document.getElementById("fName");
+const fType = document.getElementById("fType");
+const fNote = document.getElementById("fNote");
+const fX = document.getElementById("fX");
+const fY = document.getElementById("fY");
+const pickhint = document.getElementById("pickhint");
+
+let s = 0.14, tx = 0, ty = 0;
+
+/* ── 底图三级加载：0.44MB 预览 → 1.8MB 中图 → 6MB 原图（只在真要看字时才拉） ──
+   换档阈值不能写死：Retina 屏一个 CSS 像素要吃 2 个物理像素，
+   若等到 s=0.85 才换原图，s=0.5~0.85 这段中图已经被拉伸 1.7 倍——放大看字反而糊。
+   所以按「这档图的像素 / 屏幕需要的像素」算阈值。 */
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+const _need = w => Math.max(0.05, Math.min(1, (w / IW) / DPR * 0.98));
+const _prevUrl = mapImg.getAttribute("src");
+const _isEmbed = (_prevUrl || "").slice(0, 5) === "data:";   // 首图内嵌在 HTML 里
+/* 档位按「外部还真有的图」拼：内嵌首图已够用的，就不再挂同分辨率的外链；
+   外链缺失时由 onerror 直接放弃该档，不会每帧重试 404。 */
+const TIERS = [{u: _prevUrl, min: 0}];
+if(!_isEmbed && mapImg.dataset.mid) TIERS.push({u: mapImg.dataset.mid, min: _need(2207)});
+if(mapImg.dataset.full)             TIERS.push({u: mapImg.dataset.full, min: _need(4414)});
+const _OFFLINE = TIERS.length === 1 && _isEmbed;   // 单文件、且无外链：换档无意义
+let curTier = 0;
+const tierState = TIERS.map((_, i) => i === 0 ? 2 : 0);   // 0 未取 1 取中 2 已载 3 取不到
+function needTier(scale){
+  let k = 0;
+  for(let i = 1; i < TIERS.length; i++) if(scale >= TIERS[i].min) k = i;
+  return k;
+}
+function ensureTier(k){
+  if(_OFFLINE) return;                               // 单文件版三档同图，切了也是同一张
+  k = Math.min(k, TIERS.length - 1);                 // 这版可能只有 preview+mid 两档，别越界
+  if(k <= curTier) return;
+  if(tierState[k] === 3) return;                     // 这档取不到（404）：放弃，别反复重试
+  if(k > curTier + 1 && tierState[k - 1] === 0) ensureTier(k - 1);   // 缺口档：先拿中间档顶着，别白屏
+  if(tierState[k] === 2){ curTier = k; mapImg.src = TIERS[k].u; return; }
+  if(tierState[k] === 1) return;
+  tierState[k] = 1;
+  const im = new Image();
+  im.onload = () => {
+    tierState[k] = 2;
+    if(k > curTier){
+      curTier = k;
+      mapImg.src = TIERS[k].u;
+      const p = byId.get(selId);
+      if(p) showMag(p);
+    }
+    if(k < TIERS.length - 1 && s >= TIERS[k + 1].min) ensureTier(k + 1);
+  };
+  im.onerror = () => { tierState[k] = 3; };          // 标成取不到，退回当前档也无损
+  im.src = TIERS[k].u;
+}
+
+/* ── 署名（本机记住，附在导出的修订里） ── */
+const LS_EDITOR = "pjmap.editor";
+let editor = "";
+try{ editor = localStorage.getItem(LS_EDITOR) || ""; }catch(e){}
+function esc(t){
+  return String(t).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+}
+function paintWho(){
+  const cw = document.getElementById("cmWho");
+  if(cw) cw.textContent = editor || "匿名";
+}
+function renderWho(){
+  const el = document.getElementById("whoTxt");
+  if(el) el.innerHTML = editor
+    ? `署名 <b>${esc(editor)}</b> · 可编辑`
+    : `匿名浏览 · 可编辑，无需登录`;
+  const b = document.getElementById("btnName");
+  if(b) b.textContent = editor ? "改署名" : "署名";
+  paintWho();
+}
+function askName(){
+  const v = prompt("留个署名（出现在你提交的修订里，可留空）", editor || "");
+  if(v === null) return;
+  editor = v.trim().slice(0, 24);
+  try{ editor ? localStorage.setItem(LS_EDITOR, editor) : localStorage.removeItem(LS_EDITOR); }catch(e){}
+  renderWho(); persist();
+  toast(editor ? "署名已记为本机：" + editor : "已改为匿名");
+}
+
+function mergeSeed(store){
+  const bySeedId = new Map(store.map(p => [p.id, p]));
+  const used = new Set();
+  const out = [];
+  for(const s of SEED){
+    const l = bySeedId.get(s.id);
+    // 本地有「用户修正」标记 → 坐标与名字一律以本地为准，永不覆盖
+    const trusted = !!l && l.fx === 1;
+    if(l && !trusted && Math.hypot(l.x - s.x, l.y - s.y) > 40){
+      out.push(s);                          // 旧版错位数据，不吃这个名字
+      continue;
+    }
+    if(!l){ out.push(s); continue; }
+    used.add(l.id);
+    const o = Object.assign({}, s);
+    if(trusted){ o.x = l.x; o.y = l.y; o.fx = 1; }
+    if(l.n){ o.n = l.n; o.s = l.s || s.s; o.t = l.t || s.t; o.src = "vision"; }
+    if(l.note) o.note = l.note;
+    if(l.ig) o.ig = 1;
+    if(l.ld) o.ld = l.ld;                 // 旗标方位/排布是本机视觉偏好，合并时别丢
+    if(l.lw) o.lw = l.lw;
+    out.push(o);
+  }
+  for(const l of store){                  // 用户自己新增的点，原样保留
+    if(used.has(l.id)) continue;
+    if(l.src === "manual" || !l.w) out.push(l);
+  }
+  return out;
+}
+function load(){
+  let store = null;
+  try{
+    const raw = localStorage.getItem(LS);
+    if(raw){ const d = JSON.parse(raw); if(Array.isArray(d.places)) store = d.places; }
+  }catch(e){}
+  if(store && store.length){
+    const before = store.filter(p=>p.n).length;
+    places = mergeSeed(store);
+    const after = places.filter(p=>p.n).length;
+    if(after > before) setTimeout(()=>toast(`已并入新版数据，新增 ${after-before} 个已命名点位`), 400);
+  }else{
+    places = JSON.parse(JSON.stringify(SEED));
+  }
+  index();
+}
+function index(){
+  byId = new Map(places.map(p => [p.id, p]));
+  document.getElementById("tot").textContent = places.length;
+}
+function persist(){
+  try{
+    localStorage.setItem(LS, JSON.stringify({v:2, savedAt:new Date().toISOString(), editor, places}));
+  }catch(e){ toast("本地存储写入失败：" + e.message); }
+  renderWho(); updateCommitBar();
+}
+/* 底部「有 N 处改动待提交」条 —— 对应 GitHub 的 Compare & pull request */
+function updateCommitBar(){
+  const bar = document.getElementById("commitbar"), t = document.getElementById("cbTxt");
+  if(!bar || !t) return;
+  const n = places.filter(p => p.fx).length;
+  const sub = places.filter(p => p.sub && !p.fx).length;
+  bar.classList.toggle("on", n > 0 || sub > 0);
+  if(n) t.innerHTML = `有 <b>${n}</b> 处改动待提交` + (sub ? `<span class="cbsub">· ${sub} 处已提交待审</span>` : "");
+  else if(sub) t.innerHTML = `<b>${sub}</b> 处已提交，等审核`;
+}
+/* 本地改动是否还没提交：和出厂基线比，名字 / 类型 / 备注 / 位置 / 非地名 / 新增都算 */
+function isDirty(p){
+  if(p.sub) return false;                          // 已经提交、在等审核
+  const b = BASE.get(p.id);
+  if(!b) return true;                              // 本地新增的点位
+  if((p.n || "") !== (b.n || "")) return true;
+  if((p.t || "") !== (b.t || "")) return true;
+  if((p.note || "") !== (b.note || "")) return true;
+  if((p.ig ? 1 : 0) !== (b.ig ? 1 : 0)) return true;
+  if(Math.abs((+p.x || 0) - (+b.x || 0)) > 1.5) return true;
+  if(Math.abs((+p.y || 0) - (+b.y || 0)) > 1.5) return true;
+  return false;
+}
+function syncDirty(){
+  let hit = false;
+  for(const p of places){
+    const d = isDirty(p), had = !!p.fx;
+    if(d === had) continue;
+    if(d) p.fx = 1; else delete p.fx;
+    paintMarker(p);
+    hit = true;
+  }
+  if(hit) persist();
+}
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove("on"), 1700);
+}
+
+function apply(){
+  const inv = 1 / s;
+  world.style.transform = `translate(${tx}px,${ty}px) scale(${s})`;
+  world.style.setProperty("--inv", inv);
+  /* 点的屏幕尺寸：全图（0.13 倍）也有 6px，1 倍时 9px，2 倍时 11px —— 远看是隐约的朱砂点，不再消失 */
+  const t = Math.min(1, s / 0.85);
+  const dk = t < 1 ? 0.5 + 0.5 * Math.pow(t, 0.55)
+                   : Math.min(1.2, 1 + (s - 0.85) * 0.30);
+  world.style.setProperty("--mks", inv * dk);
+  /* 浓度：远看 .72，近看 1 —— 太小又太淡会直接从图上「消失」 */
+  world.style.setProperty("--mkop", (t < 1 ? 0.55 + 0.45 * Math.pow(t, 0.5) : 1).toFixed(2));
+  /* 纸色细沿也随倍率收细：远看时白边占掉半个点，红芯只剩一半，看着更「没有」 */
+  world.style.setProperty("--mkbw", (t < 1 ? 0.75 + 0.75 * t : 1.5).toFixed(2) + "px");
+  document.body.classList.toggle("zoomed", s > 0.85);
+  document.body.classList.toggle("lbl", s > 0.92);
+  ensureTier(needTier(s));                          // 放大到能读字时才升级底图
+  positionLabels();                                 // 文字层跟着走（不缩放，只平移）
+}
+
+/* 文字层：屏幕坐标 = 平移 + 图上坐标 × 缩放。不参与 transform:scale，
+   字随倍率变大靠的是「按新字号重新排版」——浏览器按该字号原生栅格化，所以放大后仍是矢量般清晰；
+   而不是把 12px 的位图拉大（那才会糊）。 */
+let labelsShown = false;
+let lblOn = true;                                  // 「更多」里可关：只看碑刻原字
+/* 旗标的两个维度，单点可覆盖：
+     ld 方位 —— 旗标坐在锚点的哪一边，只有上下左右四个正交方向（三角箭头也只认这四个），空＝自动
+     lw 排布 —— h 横排 / v 竖排，空＝跟全局 */
+let gFlagWrite = "h";                              // 全体默认排布（单个点位可用 p.lw 覆盖）
+const LS_FLAG = "pjmap.flag";
+try{
+  const f = JSON.parse(localStorage.getItem(LS_FLAG) || "null");
+  if(f && f.w === "v") gFlagWrite = "v";
+}catch(e){}
+const DIRS4 = ["n", "s", "e", "w"];
+const DIR_LABEL = {n:"上",s:"下",e:"右",w:"左"};
+const LABEL_METRIC = new Map();                    // 文字+排布 → 16px 基准下的 {w,h}
+function flagDirOf(p){ return DIRS4.indexOf(p.ld) >= 0 ? p.ld : null; }
+function flagWriteOf(p){ return (p.lw || gFlagWrite) === "v" ? "v" : "h"; }
+/* 锚点：有检测框就落在框的对应边上（箭头指框，不指框心），没有框就指那个点 */
+function flagAnchor(p, d, bw, bh){
+  let ax = p.x, ay = p.y;
+  if(bw && bh){
+    if(d === "n") ay = p.y - bh / 2;
+    else if(d === "s") ay = p.y + bh / 2;
+    else if(d === "e") ax = p.x + bw / 2;
+    else if(d === "w") ax = p.x - bw / 2;
+  }
+  return [ax, ay];
+}
+/* 给定方位，算旗标左上角（屏幕坐标）。off 是箭头长度 + 一丝间隙 */
+function flagPlace(d, ax, ay, w, h, off){
+  if(d === "n") return [ax - w / 2, ay - off - h];
+  if(d === "s") return [ax - w / 2, ay + off];
+  if(d === "e") return [ax + off, ay - h / 2];
+  return [ax - off - w, ay - h / 2];               // w
+}
+function positionLabels(){
+  if(!labelLayer) return;
+  const on = lblOn && s > 0.92;
+  if(!on){
+    if(labelsShown){
+      for(const el of labelLayer.children) el.style.display = "none";
+      labelsShown = false;
+    }
+    return;
+  }
+  labelsShown = true;
+  const r = stage.getBoundingClientRect();
+  const W = r.width, H = r.height;
+  /* 15px 起按 0.58 次方缓升，封顶 25px。有朱砂底之后视觉重量比纯字大，
+     所以比无底方案收一档：再大就盖过碑刻原字，像「名字印了两遍」。
+     字号变了是「重新排版」，不是拉大位图 —— 所以放大后依然锐。 */
+  const fs = Math.round(Math.min(25, Math.max(15, 15 * Math.pow(s, 0.58))) * 2) / 2;
+  const off = fs * .72;          // 箭头 0.5em + 约 0.2em 空白，箭尖不戳进碑刻笔画
+  const k = fs / 16;
+  for(const el of labelLayer.children){
+    const p = byId.get(el.dataset.id);
+    if(!p || !p.n || p.ig){
+      if(el.style.display !== "none") el.style.display = "none";
+      continue;
+    }
+    const mode = flagWriteOf(p);
+    if(el._mode !== mode){ el.classList.toggle("v", mode === "v"); el._mode = mode; }
+    if(el._fs !== fs){ el.style.fontSize = fs + "px"; el._fs = fs; }
+    const bw = +p.w || 0, bh = +p.h || 0;
+    const fixed = flagDirOf(p);
+    const probe = fixed || (mode === "v" ? "e" : "n");
+    const [px, py] = flagAnchor(p, probe, bw, bh);
+    const pxs = tx + px * s, pys = ty + py * s;
+    /* 锚点都远远在画布外的，不测尺寸直接藏 —— 否则 900 多个元素逐个读 offsetWidth 会把帧拖死 */
+    if(pxs < -280 || pxs > W + 280 || pys < -220 || pys > H + 220){
+      if(el.style.display !== "none") el.style.display = "none";
+      continue;
+    }
+    el.style.display = "block";
+    const key = mode + "|" + el.textContent;
+    let m = LABEL_METRIC.get(key);
+    if(!m){                                        // 只在首次见到这条文字时量一次
+      m = { w: el.offsetWidth / k, h: el.offsetHeight / k };
+      if(!m.w || !m.h){ el.style.display = "none"; continue; }
+      LABEL_METRIC.set(key, m);
+    }
+    const w = m.w * k, h = m.h * k;
+    let d = fixed, x, y;
+    if(d){
+      const [ax, ay] = flagAnchor(p, d, bw, bh);
+      [x, y] = flagPlace(d, tx + ax * s, ty + ay * s, w, h, off);
+    }else{
+      /* 自动：只在上下左右四个正交方位里挑，选第一个旗标整块落在画布内的。
+         竖排窄高，优先放左右；横排扁宽，优先放上下。
+         手动指定过方位的点不参与，免得拖到哪儿都被改回去。 */
+      const cands = mode === "v" ? ["e", "w", "n", "s"] : ["n", "s", "e", "w"];
+      for(const c of cands){
+        const [ax, ay] = flagAnchor(p, c, bw, bh);
+        const [cx, cy] = flagPlace(c, tx + ax * s, ty + ay * s, w, h, off);
+        if(cx > 2 && cy > 2 && cx + w < W - 2 && cy + h < H - 2){ d = c; x = cx; y = cy; break; }
+      }
+      if(!d){
+        d = cands[0];
+        const [ax, ay] = flagAnchor(p, d, bw, bh);
+        [x, y] = flagPlace(d, tx + ax * s, ty + ay * s, w, h, off);
+      }
+    }
+    if(x > W + 60 || x + w < -60 || y > H + 60 || y + h < -60){
+      if(el.style.display !== "none") el.style.display = "none";
+      continue;
+    }
+    if(el.dataset.d !== d) el.dataset.d = d;
+    el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+  }
+}
+
+function buildMarkers(){
+  const fm = document.createDocumentFragment(), fl = document.createDocumentFragment();
+  for(const p of places){ fm.appendChild(makeEl(p)); fl.appendChild(makeLabel(p)); }
+  world.appendChild(fm); labelLayer.appendChild(fl);
+}
+function makeEl(p){
+  const d = document.createElement("div");
+  d.className = "mk" + (p.src === "auto" && !p.n ? " auto" : "") + (p.ig ? " ig" : "") +
+                (p.fx ? " fx" : "") + (p.sub && !p.fx ? " sub" : "");
+  d.dataset.id = p.id;
+  if(p.w && p.h && !p.n){
+    d.style.left = (p.x - p.w/2) + "px";
+    d.style.top = (p.y - p.h/2) + "px";
+    d.style.width = p.w + "px";
+    d.style.height = p.h + "px";
+  }else{
+    d.style.left = p.x + "px";
+    d.style.top = p.y + "px";
+  }
+  const rg = document.createElement("i");
+  rg.className = "ring";
+  d.appendChild(rg);
+  return d;
+}
+function makeLabel(p){
+  const el = document.createElement("i");
+  el.className = "lb";
+  el.dataset.id = p.id;
+  el.textContent = p.n || "";
+  const tip = document.createElement("b");       // 小箭头，尖指向锚点；方位决定它贴哪一侧
+  tip.className = "tip";
+  el.appendChild(tip);
+  labelMap.set(p.id, el);
+  return el;
+}
+function addMarker(p){
+  world.appendChild(makeEl(p));
+  labelLayer.appendChild(makeLabel(p));
+  positionLabels();
+}
+function markerOf(id){ return world.querySelector('.mk[data-id="'+id+'"]'); }
+function paintMarker(p){
+  const m = markerOf(p.id); if(!m) return;
+  const l = labelMap.get(p.id);
+  if(l){                                          // 只换文字节点，别把里面的箭头一起清掉
+    const t = l.firstChild;
+    if(t && t.nodeType === 3) t.nodeValue = p.n || "";
+    else l.insertBefore(document.createTextNode(p.n || ""), l.firstChild);
+    l.classList.toggle("sel", p.id === selId);
+  }
+  m.className = "mk" + (p.src === "auto" && !p.n ? " auto" : "") +
+                (p.ig ? " ig" : "") + (p.fx ? " fx" : "") +
+                (p.sub && !p.fx ? " sub" : "") +
+                (p.id === selId ? " sel" : "");
+  place(m, p);
+}
+function centerOn(x, y, scale){
+  scale = scale || s;
+  const r = stage.getBoundingClientRect();
+  s = scale;
+  tx = r.width / 2 - x * s;
+  ty = r.height / 2 - y * s;
+  apply();
+}
+function flyTo(x, y, scale){
+  const r = stage.getBoundingClientRect();
+  const s0 = s, tx0 = tx, ty0 = ty;
+  const s1 = scale || Math.max(s, 0.9);
+  const tx1 = r.width / 2 - x * s1, ty1 = r.height / 2 - y * s1;
+  const t0 = performance.now(), D = 340;
+  (function step(t){
+    const k = Math.min(1, (t - t0) / D);
+    const e = k < .5 ? 2*k*k : 1 - Math.pow(-2*k+2,2)/2;
+    s = s0 + (s1-s0)*e; tx = tx0 + (tx1-tx0)*e; ty = ty0 + (ty1-ty0)*e;
+    apply();
+    if(k < 1) requestAnimationFrame(step);
+  })(t0);
+}
+
+function toSimp(t){
+  let o = "";
+  for(const c of String(t)) o += (T2S[c] || c);
+  return o;
+}
+/* 单个关键词是否命中：地名、类型、备注、编号都算。
+   类型也算，用户才能搜「桥」拿到全部桥，而不是只拿到名字里带「桥」的那几个。 */
+function hitOne(p, t){
+  if(!t) return true;
+  const T = t.toUpperCase();
+  return (p.n && p.n.includes(t)) || (p.s && p.s.includes(t)) ||
+         (p.t && p.t.includes(t)) ||
+         (p.note && p.note.includes(t)) ||
+         (p.id && p.id.toUpperCase().includes(T));
+}
+function filtered(){
+  const k = q.trim();
+  const ks = toSimp(k);                    // 简化后的查询，兼容「阊门 / 閶門」
+  const toks = ks.split(/\s+/).filter(Boolean);   // 空格分词：多个词要同时命中
+  return places.filter(p => {
+    if(filterType === "待命名" && (p.n || p.ig)) return false;
+    if(filterType === "已命名" && !p.n) return false;
+    if(filterType === "已忽略" && !p.ig) return false;
+    if(filterType === "待提交" && !(p.fx || isDirty(p))) return false;
+    if(filterType === "待审" && !(p.sub && !p.fx)) return false;
+    if(filterCat && p.t !== filterCat) return false;
+    if(!k) return true;
+    return toks.every(t => hitOne(p, t));
+  });
+}
+function renderList(){
+  const arr = filtered();
+  const isD = p => p.fx || isDirty(p);
+  const pinned = arr.filter(p => isD(p) || p.sub);          // 改过的一律顶到最前面，永远看得见
+  const restAll = arr.filter(p => !(isD(p) || p.sub));
+  const named = restAll.filter(p=>p.n).sort((a,b)=> a.n.localeCompare(b.n,"zh"));
+  const rest = restAll.filter(p=>!p.n);
+  const max = 120;
+  const show = pinned.concat(named, rest).slice(0, Math.max(max, pinned.length));
+  listEl.innerHTML = "";
+  if(q.trim() && !show.length){
+    const nRest = places.filter(p => !p.n && !p.ig).length;
+    listEl.innerHTML = '<div class="hint">没有匹配的点位。' +
+      (nRest ? `图上还有 ${nRest} 个点没认出名字，你要找的可能在其中 —— 按「候选框」显示它们。` : '换个词试试，或清空搜索。') +
+      '</div>';
+    return;
+  }
+  /* 搜索时把命中数写在结果正上方 —— 否则用户不知道「筛掉了多少」 */
+  if(q.trim()){
+    const h = document.createElement("div");
+    h.className = "hint lgh";
+    h.textContent = `「${q.trim()}」命中 ${arr.length} 处`;
+    listEl.appendChild(h);
+  }
+  /* 待提交/待审的点本来就带「待提交」「待审」小签 + 左侧金线，不必再加分组标题；
+     只有条目多到需要分隔时才画一条细线，避免天天看见一句长提示 */
+  for(const p of show){
+    if(pinned.length >= 3 && p === named[0]){
+      const h = document.createElement("div");
+      h.className = "hint lgh";
+      h.textContent = "其余点位";
+      listEl.appendChild(h);
+    }
+    const r = document.createElement("div");
+    const dirty = isD(p);
+    r.className = "row" + (p.ig ? " ig" : "") + (dirty ? " dirty" : "") +
+                  (p.id === selId ? " sel" : "");
+    r.dataset.id = p.id;
+    r.innerHTML = `<span class="nm${p.n?"":" empty"}">${p.n || (p.ig ? "不是地名" : "待命名")}</span>` +
+      (p.t ? `<span class="tg">${p.t}</span>` : "") +
+      (dirty ? `<span class="pen">待提交</span>` : (p.sub ? `<span class="sub">待审</span>` : "")) +
+      `<span class="id">${p.id}</span>`;
+    r.onclick = () => select(p.id, true);
+    listEl.appendChild(r);
+  }
+  if(arr.length > max){
+    const d = document.createElement("div");
+    d.className = "hint";
+    d.textContent = `仅列前 ${max} 条，共 ${arr.length} 条。输入关键词缩小范围。`;
+    listEl.appendChild(d);
+  }
+}
+function renderStats(){
+  const named = places.filter(p=>p.n).length;
+  const ig = places.filter(p=>p.ig && !p.n).length;
+  const rest = places.length - named - ig;
+  const a = document.getElementById("lgN"), b = document.getElementById("lgR");
+  if(a) a.textContent = named + (ig ? `（非地名 ${ig}）` : "");
+  if(b) b.textContent = rest;
+  const vc = document.getElementById("verCnt");
+  if(vc) vc.textContent = `${places.length} 点位 · 已认定 ${named} · 待认 ${rest}`;
+}
+function renderChips(){
+  const el = document.getElementById("chips");
+  const nDirty = places.filter(p => p.fx || isDirty(p)).length;
+  const nSub = places.filter(p => p.sub && !p.fx).length;
+  const states = ["全部","待命名","已命名","已忽略"];
+  if(nDirty) states.push("待提交");
+  if(nSub) states.push("待审");
+  el.innerHTML = "";
+  /* 第一行：状态。只留 4~6 个，不横向滚动 */
+  for(const t of states){
+    const c = document.createElement("span");
+    c.className = "chip" + (t === filterType ? " on" : "");
+    c.dataset.k = t;                       // 给 CSS 用：待审靛青、待提交赭金
+    c.textContent = t;
+    c.onclick = () => { filterType = t; renderChips(); renderList(); };
+    el.appendChild(c);
+  }
+  /* 第二行：类型下拉。10 种类型不再铺开占满一行 */
+  const types = TYPES.filter(t => places.some(p => p.t === t));
+  if(types.length){
+    const s = document.createElement("select");
+    s.id = "typeSel";
+    s.className = "chipsel" + (filterCat ? " on" : "");
+    s.innerHTML = `<option value="">类型：全部</option>` +
+      types.map(t => `<option value="${t}"${filterCat === t ? " selected" : ""}>${t}</option>`).join("");
+    s.onchange = () => { filterCat = s.value || ""; renderChips(); renderList(); };
+    el.appendChild(s);
+  }
+  /* 有条件在生效时，给一个明确的出口，否则用户不知道列表为什么变短了 */
+  const active = (filterType !== "全部") || !!filterCat;
+  if(active){
+    const c = document.createElement("span");
+    c.className = "chip clr";
+    c.textContent = "清除筛选 ×";
+    c.onclick = () => { filterType = "全部"; filterCat = ""; setQuery(""); renderChips(); };
+    el.appendChild(c);
+  }
+}
+function renderBlocks(){
+  const el = document.getElementById("blocks");
+  if(!BLOCKS.length){ el.style.display = "none"; return; }
+  el.innerHTML = "";
+  const hd = document.createElement("div");
+  hd.className = "hd";
+  hd.textContent = "分块进度 · 点格子跳过去";
+  el.appendChild(hd);
+  for(const b of BLOCKS){
+    const inb = places.filter(p => p.w && p.x >= b.x && p.x < b.x + 700 && p.y >= b.y && p.y < b.y + 700);
+    const rest = inb.filter(p=>!p.n && !p.ig).length;
+    const done = inb.length - rest;
+    const d = document.createElement("div");
+    d.className = "bk" + (rest === 0 ? " done" : "") + (inb.some(p=>p.id === selId) ? " on" : "");
+    d.title = `x ${b.x}–${b.x+700}　y ${b.y}–${b.y+700}\n余 ${rest} / ${inb.length}`;
+    d.textContent = rest === 0 ? "✓" : rest;
+    if(inb.length){
+      const em = document.createElement("em");
+      em.style.width = Math.round(done / inb.length * 100) + "%";
+      d.appendChild(em);
+    }
+    d.onclick = () => { centerOn(b.x + 350, b.y + 350, 0.95); };
+    el.appendChild(d);
+  }
+}
+function refresh(){ syncDirty(); renderStats(); renderList(); renderBlocks(); updateCommitBar(); renderChips(); showAuto(); positionLabels(); }
+
+function select(id, fly){
+  selId = id;
+  world.querySelectorAll(".mk.sel").forEach(m=>m.classList.remove("sel"));
+  labelLayer.querySelectorAll(".lb.sel").forEach(l=>l.classList.remove("sel"));
+  const p = byId.get(id);
+  if(!p) return;
+  const m = markerOf(id);
+  if(m) m.classList.add("sel");
+  const lb = labelMap.get(id);
+  if(lb) lb.classList.add("sel");
+  listEl.querySelectorAll(".row.sel").forEach(r=>r.classList.remove("sel"));
+  const row = listEl.querySelector('.row[data-id="'+id+'"]');
+  if(row) row.classList.add("sel");
+  if(fly) flyTo(p.x, p.y, Math.max(s, 0.95));
+  if(fly && window.innerWidth <= 860) document.body.classList.remove("panel");
+  openInsp(p);
+}
+function openInsp(p){
+  insp.style.display = "block";
+  setTitle(p);
+  fName.value = p.n || "";
+  fType.value = p.t || "其他";
+  fNote.value = p.note || "";
+  const ig = document.getElementById("fIgnore");
+  ig.classList.toggle("primary", !!p.ig);
+  ig.textContent = p.ig ? "恢复为地名" : "不是地名";
+  fX.value = Math.round(p.x);
+  fY.value = Math.round(p.y);
+  document.getElementById("posInfo").textContent = p.fx ? "· 待提交" : (p.sub ? "· 已提交，等审核" : "");
+  syncFlagPad(p);
+  showMag(p);
+}
+/* 方位盘的选中态 + 一句人话说明；改方位和改箭头指向是同一件事 */
+function syncFlagPad(p){
+  const pad = document.getElementById("flagPad"); if(!pad || !p) return;
+  const fdir = flagDirOf(p);
+  const d = fdir || "a";
+  pad.querySelectorAll("[data-d]").forEach(b => b.classList.toggle("on", b.dataset.d === d));
+  const w = flagWriteOf(p);
+  pad.querySelectorAll("[data-w]").forEach(b => b.classList.toggle("on", b.dataset.w === w));
+  const info = document.getElementById("flagInfo");
+  if(info) info.textContent =
+    (fdir ? "旗标在" + DIR_LABEL[fdir] : "自动") + " · " + (w === "v" ? "竖排" : "横排") +
+    (p.lw ? "" : "（全体设置）");
+}
+function place(m, p){
+  if(p.w && p.h && !p.n && !p.ig){
+    m.style.left = (p.x - p.w/2) + "px"; m.style.top = (p.y - p.h/2) + "px";
+    m.style.width = p.w + "px"; m.style.height = p.h + "px";
+  }else{
+    m.style.left = p.x + "px"; m.style.top = p.y + "px";
+    m.style.width = ""; m.style.height = "";
+  }
+}
+function markFixed(p){
+  p.fx = 1;
+  const m = markerOf(p.id);
+  if(m) m.classList.add("fx");
+}
+function setPos(p, x, y, msg){
+  x = Math.round(Math.max(0, Math.min(IW, x)));
+  y = Math.round(Math.max(0, Math.min(IH, y)));
+  if(x === p.x && y === p.y){ if(msg) toast("位置没变"); return; }
+  pushUndo(snap(p, "pos"));
+  p.x = x; p.y = y; markFixed(p);
+  persist(); refresh();
+  if(selId === p.id) openInsp(p);
+  if(msg) toast(msg + "　" + x + ", " + y);
+}
+function nearestBox(p){
+  let best = null, bd = 1e9;
+  for(const c of places){
+    if(!c.w || !c.h || c.id === p.id) continue;
+    const dx = Math.max(0, Math.abs(c.x - p.x) - c.w/2);
+    const dy = Math.max(0, Math.abs(c.y - p.y) - c.h/2);
+    const d = Math.hypot(dx, dy);
+    if(d < bd){ bd = d; best = c; }
+  }
+  return best ? {box: best, dist: bd} : null;
+}
+let picking = false;
+function startPick(){
+  const p = byId.get(selId); if(!p) return;
+  picking = true;
+  document.body.classList.add("picking");
+  document.getElementById("fPick").classList.add("primary");
+  pickhint.style.display = "block";
+}
+function stopPick(){
+  picking = false;
+  document.body.classList.remove("picking");
+  const b = document.getElementById("fPick"); if(b) b.classList.remove("primary");
+  if(pickhint) pickhint.style.display = "none";
+}
+function setTitle(p){
+  document.getElementById("inspTitle").innerHTML =
+    (p.n || (p.ig ? "不是地名" : "未命名")) +
+    `<span>${p.id} · ${Math.round(p.x)},${Math.round(p.y)}</span>`;
+}
+function showMag(p){
+  ensureTier(2);                                    // 放大镜里必须是画质最高的那一档
+  const r = mag.getBoundingClientRect();
+  const w = r.width || 280, h = r.height || 168;
+  const bigUrl = TIERS[TIERS.length - 1].u;         // 最后一档＝最清，别写死 TIERS[2]（有的版本只有两档）
+  mag.style.backgroundImage = `url("${bigUrl}")`;
+  mag.style.backgroundSize = `${IW * magZ}px ${IH * magZ}px`;
+  mag.style.backgroundPosition = `${-(p.x * magZ - w / 2)}px ${-(p.y * magZ - h / 2)}px`;
+  const bx = mag.querySelector(".bx");
+  if(p.w && p.h){
+    bx.style.display = "block";
+    bx.style.left = (w / 2 - p.w / 2 * magZ) + "px";
+    bx.style.top = (h / 2 - p.h / 2 * magZ) + "px";
+    bx.style.width = (p.w * magZ) + "px";
+    bx.style.height = (p.h * magZ) + "px";
+  } else bx.style.display = "none";
+  document.getElementById("magZ").textContent = (Math.round(magZ * 100) / 100) + "×";
+}
+function closeInsp(){ insp.style.display = "none"; }
+
+function inferType(n){
+  if(!n) return "";
+  if(/[橋桥]$/.test(n)) return "桥梁";
+  if(/[門门]$/.test(n)) return "城门";
+  if(/[寺觀观廟庙院庵祠宫殿堂]$/.test(n)) return "寺观";
+  if(/[坊]$/.test(n)) return "坊";
+  if(/[塔]$/.test(n)) return "塔";
+  if(/[園园]$/.test(n)) return "园林";
+  if(/[街巷]$/.test(n)) return "街巷";
+  if(/[河塘灣湾浜涇泾]$/.test(n)) return "河道";
+  if(/[司局庫库廳厅衙]$/.test(n)) return "衙署";
+  return "";
+}
+function snap(p, kind){ return {kind: kind || "edit", id: p.id, data: JSON.parse(JSON.stringify(p))}; }
+function pushUndo(rec){ undoStack.push(rec); if(undoStack.length > 60) undoStack.shift(); }
+function undoLast(){
+  const rec = undoStack.pop();
+  if(!rec){ toast("没有可撤销的操作"); return; }
+  if(rec.kind === "add"){
+    removePlace(rec.id, true);
+    toast("已撤销新增");
+  }else if(rec.kind === "del"){
+    rec.data.ig = rec.data.ig || 0;
+    if(!rec.data.ig) delete rec.data.ig;
+    places.push(rec.data); index(); addMarker(rec.data); refresh(); persist();
+    toast("已恢复 " + (rec.data.n || rec.data.id));
+  }else{
+    const p = byId.get(rec.id); if(!p) return;
+    for(const k of Object.keys(p)) if(!(k in rec.data)) delete p[k];
+    Object.assign(p, rec.data);
+    paintMarker(p);
+    const m = markerOf(p.id);
+    if(m){ place(m, p); m.classList.toggle("fx", !!p.fx); }
+    refresh(); persist();
+    snapOwner = null;
+    if(p.id === selId) openInsp(p);
+    toast("已撤销");
+  }
+}
+function removePlace(id, quiet){
+  const m = markerOf(id); if(m) m.remove();
+  const l = labelMap.get(id); if(l){ l.remove(); labelMap.delete(id); }
+  places = places.filter(x => x.id !== id);
+  index(); persist(); refresh();
+  if(selId === id){ selId = null; closeInsp(); }
+  if(!quiet) toast("已删除");
+}
+
+function commit(){
+  const p = byId.get(selId); if(!p) return;
+  const n = fName.value.trim(), t = fType.value, note = fNote.value.trim();
+  if(n === (p.n || "") && t === (p.t || "其他") && note === (p.note || "")) return;
+  const wasNamed = !!p.n;
+  if(snapOwner !== p.id){ pushUndo(snap(p)); snapOwner = p.id; }
+  p.n = n;
+  if(n && (!t || t === "其他")){
+    const g = inferType(n);
+    p.t = g || t;
+  }else p.t = t;
+  p.note = note;
+  if(p.n && p.src === "auto") p.src = "vision";
+  if(p.n && p.ig) delete p.ig;
+  fType.value = p.t;
+  if(wasNamed && p.n && p.src !== "manual") markFixed(p);   // 改的是已有名字 → 记为修正
+  paintMarker(p); persist(); refresh(); setTitle(p);
+  fX.value = Math.round(p.x); fY.value = Math.round(p.y);
+}
+fName.oninput = commit; fType.onchange = commit; fNote.oninput = commit;
+/* 保存＝只存，留在原地、留在编辑模式；想换下一个点用「下一个 ›」 */
+function saveStay(){
+  const p = byId.get(selId); if(!p) return;
+  const key = [p.n, p.t, p.note, Math.round(p.x), Math.round(p.y), p.ig ? 1 : 0].join("\u0001");
+  commit();
+  const p2 = byId.get(selId) || p;
+  const key2 = [p2.n, p2.t, p2.note, Math.round(p2.x), Math.round(p2.y), p2.ig ? 1 : 0].join("\u0001");
+  refresh();
+  setTitle(p2);
+  const pi = document.getElementById("posInfo");
+  if(pi) pi.textContent = p2.fx ? "· 待提交" : (p2.sub ? "· 已提交，等审核" : "");
+  if(key !== key2) toast("已保存，留在编辑模式（左侧「待提交」里能看到）");
+  else toast("没有改动");
+}
+fName.addEventListener("keydown", e => {
+  if(e.key === "Enter"){
+    e.preventDefault();
+    if(e.shiftKey){ ignoreCurrent(); return; }
+    saveStay();
+  }
+});
+fType.addEventListener("keydown", e => {
+  if(e.key === "Enter"){ e.preventDefault(); saveStay(); }
+});
+function nextUnnamed(){
+  const rest = places.filter(p => !p.n && !p.ig && p.id !== selId);
+  if(!rest.length){ toast("这一带都处理完了"); closeInsp(); return; }
+  let cur = byId.get(selId);
+  if(!cur){                                   // 没有选中点 → 以当前视野中心为起点
+    const r = stage.getBoundingClientRect();
+    cur = {x: (r.width / 2 - tx) / s, y: (r.height / 2 - ty) / s};
+  }
+  const d = p => (p.x - cur.x) ** 2 + (p.y - cur.y) ** 2;
+  rest.sort((a, b) => d(a) - d(b));           // 就近推进，视线不跳
+  const p = rest[0];
+  showAuto(true);
+  select(p.id, true);
+  fName.focus(); fName.select();
+}
+function ignoreCurrent(){
+  const p = byId.get(selId); if(!p) return;
+  pushUndo(snap(p));
+  p.ig = 1; p.n = "";
+  paintMarker(p); persist(); refresh(); openInsp(p);
+  toast("已标为「不是地名」");
+}
+function showAuto(on){
+  const body = document.body.classList.contains("showauto");
+  if(on !== undefined && on !== body){ document.body.classList.toggle("showauto", on); }
+  const b = document.getElementById("btnAuto");
+  if(b){
+    const n = places.filter(p => !p.n && !p.ig).length;
+    b.classList.toggle("on", document.body.classList.contains("showauto"));
+    b.textContent = document.body.classList.contains("showauto") ? "隐藏候选框" : "候选框";
+    b.title = document.body.classList.contains("showauto")
+      ? `隐藏 ${n} 个待认点位` : `显示 ${n} 个还没认出名字的点位`;
+  }
+}
+document.getElementById("btnAuto").onclick = () => {
+  const n = places.filter(p => !p.n && !p.ig).length;
+  if(!n){ toast("没有待认的点位了"); return; }
+  showAuto(!document.body.classList.contains("showauto"));
+  toast(document.body.classList.contains("showauto")
+    ? `已显示 ${n} 个待认点位 · 点框即可命名`
+    : "候选框已隐藏");
+};
+document.getElementById("btnLbl").onclick = () => {
+  lblOn = !lblOn;
+  const b = document.getElementById("btnLbl");
+  b.classList.toggle("on", lblOn);
+  b.textContent = "标注名：" + (lblOn ? "开" : "关");
+  positionLabels();
+  toast(lblOn ? "已显示图上标注名" : "已隐藏标注名 · 只看碑刻原字");
+};
+
+/* ── 旗标：方位 + 排布 ───────────────────────────────────────────
+   方位决定旗标坐在锚点的哪一边，箭头就从哪一边指回来。所以「调方向」
+   和「调箭头指向」是同一个动作，不必分开做。 */
+document.getElementById("flagPad").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if(!b) return;
+  const p = byId.get(selId); if(!p) return;
+  if(b.hasAttribute("data-d")){
+    const d = b.dataset.d;
+    if(d === "a") delete p.ld; else p.ld = d;
+  }else if(b.hasAttribute("data-w")){
+    const w = b.dataset.w;
+    if(w === gFlagWrite) delete p.lw; else p.lw = w;   // 跟全体一致就不必单独记
+  }
+  syncFlagPad(p); positionLabels(); persist();
+});
+function syncFlagAllBtn(){
+  const b = document.getElementById("btnFlagAll");
+  if(b) b.textContent = "全体旗标：" + (gFlagWrite === "v" ? "竖排" : "横排");
+}
+document.getElementById("btnFlagAll").onclick = () => {
+  gFlagWrite = gFlagWrite === "v" ? "h" : "v";
+  try{ localStorage.setItem(LS_FLAG, JSON.stringify({w: gFlagWrite})); }catch(e){}
+  syncFlagAllBtn();
+  const cur = byId.get(selId); if(cur) syncFlagPad(cur);
+  positionLabels();
+  toast("全体旗标：" + (gFlagWrite === "v" ? "竖排" : "横排") + "　单独调过的点位不受影响");
+};
+document.getElementById("btnFlagReset").onclick = () => {
+  if(!confirm("清掉所有点位单独调过的旗标方位和排布？")) return;
+  let n = 0;
+  for(const p of places){ if(p.ld || p.lw){ delete p.ld; delete p.lw; n++; } }
+  persist();
+  const cur = byId.get(selId); if(cur) syncFlagPad(cur);
+  positionLabels();
+  toast(n ? `已复位 ${n} 处旗标` : "本来就没有单独调过的旗标");
+};
+syncFlagAllBtn();
+document.getElementById("fOk").onclick = () => { saveStay(); };
+document.getElementById("fSkip").onclick = () => { commit(); nextUnnamed(); };
+document.getElementById("fIgnore").onclick = () => {
+  const p = byId.get(selId); if(!p) return;
+  if(p.ig){                       // 已经是「不是地名」→ 恢复
+    pushUndo(snap(p));
+    delete p.ig; paintMarker(p); persist(); refresh(); openInsp(p); toast("已恢复为地名");
+    return;
+  }
+  ignoreCurrent();
+};
+document.getElementById("fLoc").onclick = () => { const p = byId.get(selId); if(p) flyTo(p.x, p.y, Math.max(s,1.1)); };
+document.getElementById("fDel").onclick = () => {
+  const p = byId.get(selId); if(!p) return;
+  if(!confirm(`删除点位「${p.n || p.id}」？可用 ⌘Z 撤销。`)) return;
+  pushUndo({kind:"del", id:p.id, data: JSON.parse(JSON.stringify(p))});
+  removePlace(p.id);
+};
+document.getElementById("fSnap").onclick = () => {
+  const p = byId.get(selId); if(!p) return;
+  const r = nearestBox(p);
+  if(!r){ toast("附近没有可吸附的文字框"); return; }
+  if(r.dist > 120){ toast("最近的文字框在 " + Math.round(r.dist) + "px 外，太远"); return; }
+  setPos(p, r.box.x, r.box.y, "已吸到最近文字框");
+};
+document.getElementById("fPick").onclick = () => {
+  if(picking){ stopPick(); return; }
+  startPick();
+};
+fX.onchange = () => { const p = byId.get(selId); if(p) setPos(p, +fX.value, p.y, ""); };
+fY.onchange = () => { const p = byId.get(selId); if(p) setPos(p, p.x, +fY.value, ""); };
+document.getElementById("magIn").onclick = () => { magZ = Math.min(5, magZ * 1.28); const p = byId.get(selId); if(p) showMag(p); };
+document.getElementById("magOut").onclick = () => { magZ = Math.max(1, magZ / 1.28); const p = byId.get(selId); if(p) showMag(p); };
+document.getElementById("magWide").onclick = () => {
+  magZ = magZ > 1.6 ? 1.25 : 2.15;      // 视野 / 大字 互切
+  const p = byId.get(selId); if(p) showMag(p);
+};
+
+let dragging = null;
+stage.addEventListener("pointerdown", e => {
+  if(e.target.closest("#insp") || e.target.closest("#hud") ||
+     e.target.closest("#mSearch") || e.target.closest("#menubtn")) return;
+  if(picking){                                   // 「重新定位」：点哪儿就移到哪儿
+    const r = stage.getBoundingClientRect();
+    const ix = (e.clientX - r.left - tx) / s, iy = (e.clientY - r.top - ty) / s;
+    const p = byId.get(selId);
+    stopPick();
+    if(p) setPos(p, ix, iy, "已重新定位");
+    return;
+  }
+  const mk = e.target.closest(".mk");
+  if(mk){                                        // 红点：任何状态都能拖（3px 内算点击）
+    const p = byId.get(mk.dataset.id);
+    if(!p) return;
+    select(p.id, false);
+    dragging = {p, moved:false, sx:e.clientX, sy:e.clientY};
+    try{ stage.setPointerCapture(e.pointerId); }catch(_){ }
+    return;
+  }
+  dragging = {pan:true, x:e.clientX, y:e.clientY, tx, ty, moved:false};
+  stage.classList.add("drag");
+  try{ stage.setPointerCapture(e.pointerId); }catch(_){ }
+});
+stage.addEventListener("pointermove", e => {
+  const r = stage.getBoundingClientRect();
+  const ix = (e.clientX - r.left - tx) / s, iy = (e.clientY - r.top - ty) / s;
+  document.getElementById("coord").textContent = `${Math.round(ix)}, ${Math.round(iy)}`;
+  if(!dragging) return;
+  if(dragging.pan){
+    tx = dragging.tx + (e.clientX - dragging.x);
+    ty = dragging.ty + (e.clientY - dragging.y);
+    dragging.moved = true;
+    apply();
+  }else if(dragging.p){
+    const p = dragging.p;
+    if(!dragging.moved && Math.hypot(e.clientX - dragging.sx, e.clientY - dragging.sy) < 3) return;
+    p.x = Math.round(Math.max(0, Math.min(IW, ix)));
+    p.y = Math.round(Math.max(0, Math.min(IH, iy)));
+    const m = markerOf(p.id);
+    if(m){ place(m, p); m.classList.add("moving"); }
+    positionLabels();
+    dragging.moved = true;
+  }
+});
+stage.addEventListener("pointerup", e => {
+  stage.classList.remove("drag");
+  if(dragging && dragging.p && dragging.moved){
+    const p = dragging.p;
+    const m = markerOf(p.id);
+    if(m) m.classList.remove("moving");
+    markFixed(p);
+    persist(); refresh(); openInsp(p);
+    toast("位置已改　" + p.x + ", " + p.y);
+  }
+  dragging = null;
+});
+stage.addEventListener("wheel", e => {
+  e.preventDefault();
+  const r = stage.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  const k = Math.exp(-e.deltaY * 0.0016);
+  const ns = Math.max(0.06, Math.min(3.2, s * k));
+  tx = mx - (mx - tx) * (ns / s);
+  ty = my - (my - ty) * (ns / s);
+  s = ns; apply();
+}, {passive:false});
+stage.addEventListener("dblclick", e => {
+  if(!document.body.classList.contains("editing")) return;
+  if(e.target.closest(".mk") || e.target.closest("#mSearch") || e.target.closest("#menubtn")) return;
+  const r = stage.getBoundingClientRect();
+  const x = Math.round((e.clientX - r.left - tx) / s), y = Math.round((e.clientY - r.top - ty) / s);
+  const id = "n" + Date.now().toString(36).slice(-5);
+  const p = {id, n:"", t:"其他", x, y, note:"", src:"manual"};
+  pushUndo({kind:"add", id, data:null});
+  places.push(p); index();
+  addMarker(p);
+  selId = id; openInsp(p); persist(); refresh(); fName.focus();
+});
+
+/* 搜索：侧栏内的 #q 与窄屏画布上的 #q2 是同一个查询的两个入口，必须双向同步。
+   否则窄屏下搜索框跟着侧栏藏起来以后，页面上就真的没有搜索了。 */
+const qEl = document.getElementById("q");
+const q2El = document.getElementById("q2");
+function setQuery(v){
+  q = v;
+  if(qEl.value !== v) qEl.value = v;
+  if(q2El && q2El.value !== v) q2El.value = v;
+  const c1 = document.getElementById("qclear");
+  if(c1) c1.style.display = q ? "block" : "none";
+  const c2 = document.getElementById("q2clear");
+  if(c2) c2.style.display = q ? "block" : "none";
+  /* 窄屏：结果列表在抽屉里，画布上给一个「命中多少」的回执 */
+  const h = document.getElementById("q2hit");
+  if(h){
+    const on = !!q.trim();
+    const n = on ? filtered().length : 0;
+    h.classList.toggle("on", on);
+    h.textContent = on ? (n ? `命中 ${n} 处` : "无匹配") : "";
+  }
+  renderList();
+}
+function bindSearch(el){
+  if(!el) return;
+  el.addEventListener("input", e => setQuery(e.target.value));
+  el.addEventListener("keydown", e => {
+    if(e.key === "Enter"){
+      const first = listEl.querySelector(".row");
+      if(first){ select(first.dataset.id, true); closeInsp(); }
+    }
+    if(e.key === "Escape"){ setQuery(""); el.blur(); }
+  });
+}
+bindSearch(qEl);
+bindSearch(q2El);
+document.getElementById("qclear").onclick = () => { setQuery(""); qEl.focus(); };
+const q2clearEl = document.getElementById("q2clear");
+if(q2clearEl) q2clearEl.onclick = () => { setQuery(""); q2El.focus(); };
+/* 编辑模式开关：按钮文案/样式与 body 状态保持一致，三处入口共用 */
+function setEditBtn(on){
+  const b = document.getElementById("btnEdit");
+  if(!b) return;
+  b.classList.toggle("primary", !on);
+  b.classList.toggle("off", on);
+  b.textContent = on ? "退出标注" : "标注模式";
+}
+document.getElementById("btnEdit").onclick = e => {
+  const on = document.body.classList.toggle("editing");
+  stage.classList.toggle("edit", on);
+  setEditBtn(on);
+  if(!on) closeInsp();
+  toast(on ? "标注模式：点红点改名 · 拖红点挪位 · 双击空白新增" : "已退出版标注模式");
+};
+document.getElementById("btnNext").onclick = () => {
+  document.body.classList.add("editing");
+  stage.classList.add("edit");
+  setEditBtn(true);
+  if(!places.some(p => !p.n && !p.ig)){
+    // 名字都填过了：那就打开候选框，让人重新审视有没有漏判为「不是地名」的
+    showAuto(true);
+    toast("没有待认的点位了 · 已打开候选框，可重新检查");
+    return;
+  }
+  showAuto(true);                       // 让下一个待标点的框可见，否则点在哪无从看起
+  nextUnnamed();
+};
+document.getElementById("btnExport").onclick = () => {
+  const blob = new Blob([JSON.stringify({v:2, image:{w:IW,h:IH}, places}, null, 1)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "平江图_地点数据_" + new Date().toISOString().slice(0,10) + ".json";
+  a.click(); URL.revokeObjectURL(a.href);
+  toast("已导出 " + places.length + " 个点位");
+};
+document.getElementById("btnShare").onclick = async () => {
+  const p = byId.get(selId);
+  let cx, cy;
+  if(p){ cx = p.x; cy = p.y; }
+  else{
+    const r = stage.getBoundingClientRect();
+    cx = (r.width/2 - tx) / s; cy = (r.height/2 - ty) / s;
+  }
+  const url = location.origin + location.pathname + "#" +
+              Math.round(cx) + "," + Math.round(cy) + "," + (Math.round(s*100)/100);
+  try{ await navigator.clipboard.writeText(url); toast("链接已复制，打开就落在这里"); }
+  catch(e){ prompt("复制这个链接发给别人：", url); }
+};
+document.getElementById("btnName").onclick = askName;
+
+/* 更多菜单 / 说明弹层 */
+(function moreMenu(){
+  const m = document.getElementById("moremenu"), b = document.getElementById("btnMore");
+  if(!m || !b) return;
+  b.onclick = e => { e.stopPropagation(); m.classList.toggle("on"); };
+  m.addEventListener("click", e => { if(e.target.closest("button")) m.classList.remove("on"); });
+  document.addEventListener("click", e => {
+    if(!m.classList.contains("on")) return;
+    if(!m.contains(e.target) && e.target !== b) m.classList.remove("on");
+  });
+  document.addEventListener("keydown", e => { if(e.key === "Escape") m.classList.remove("on"); });
+})();
+(function helpSheet(){
+  const box = document.getElementById("helpbox");
+  if(!box) return;
+  const go = document.getElementById("btnHelp"), no = document.getElementById("helpclose");
+  if(go) go.onclick = () => box.classList.add("on");
+  if(no) no.onclick = () => box.classList.remove("on");
+  box.addEventListener("click", e => { if(e.target === box) box.classList.remove("on"); });
+})();
+(function commitBar(){
+  const go = document.getElementById("cbGo");
+  if(go) go.onclick = () => submitEdits();
+})();
+(function commitSheet(){
+  const box = document.getElementById("commitbox");
+  if(!box) return;
+  const close = () => box.classList.remove("on");
+  const c1 = document.getElementById("cmClose"), c2 = document.getElementById("cmCancel");
+  if(c1) c1.onclick = close;
+  if(c2) c2.onclick = close;
+  box.addEventListener("click", e => { if(e.target === box) close(); });
+  const msg = document.getElementById("cmMsg");
+  if(msg) msg.addEventListener("keydown", e => {
+    if((e.metaKey || e.ctrlKey) && e.key === "Enter") document.getElementById("cmGo").click();
+  });
+  const go = document.getElementById("cmGo");
+  const whoChg = document.getElementById("cmWhoChg");
+  if(whoChg) whoChg.onclick = () => { askName(); paintWho(); };
+  if(go) go.onclick = () => {
+    const m = (document.getElementById("cmMsg").value || "").trim();
+    box.classList.remove("on");
+    submitEdits(m);
+  };
+})();
+(function drawer(){
+  const btn = document.getElementById("menubtn"), scrim = document.getElementById("scrim");
+  /* 「目录」= 打开检索与列表。打开就把光标放进搜索框，一次点击就能搜，
+     而不是点开一个只能看的抽屉。 */
+  const close = () => { document.body.classList.remove("panel"); if(btn) btn.textContent = "☰ 目录"; };
+  if(btn) btn.onclick = () => {
+    const open = document.body.classList.toggle("panel");
+    btn.textContent = open ? "✕ 收起" : "☰ 目录";
+    /* 平板/窄桌面：开抽屉就把光标放进搜索框，一次点击即可搜。
+       手机不抢焦点 —— 软键盘会顶掉半屏列表，反而更难用。 */
+    if(open && window.innerWidth > 480){
+      setTimeout(() => { try{ if(qEl) qEl.focus(); }catch(e){} }, 260);   // 等抽屉滑出再给焦点
+    }
+  };
+  if(scrim) scrim.onclick = close;
+})();
+(function(){ const b = document.getElementById("btnFix"); if(b) b.onclick = () => submitEdits(); })();
+document.getElementById("btnImport").onclick = () => document.getElementById("fileIn").click();
+document.getElementById("fileIn").onchange = e => {
+  const f = e.target.files[0]; if(!f) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    try{
+      const d = JSON.parse(fr.result);
+      const arr = Array.isArray(d) ? d : d.places;
+      if(!Array.isArray(arr)) throw new Error("格式不符");
+      /* 「修订文件」（kind:"fix"）只含改动过的几条 —— 必须按 id 合并，
+         不能拿它当整集覆盖，否则 937 个点位会被替换成那几条。 */
+      if(!Array.isArray(d) && d.kind === "fix"){
+        let hit = 0, miss = 0;
+        for(const r of arr){
+          const p = byId.get(r.id);
+          if(!p){ miss++; continue; }
+          if(r.n != null) p.n = r.n;
+          if(r.t) p.t = r.t;
+          if(r.x != null) p.x = +r.x;
+          if(r.y != null) p.y = +r.y;
+          if(r.note != null) p.note = r.note;
+          p.ig = +r.ig ? 1 : 0;
+          if(p.n) p.src = "vision";
+          hit++;
+        }
+        persist(); rebuild();
+        toast(`已合并 ${hit} 条修订` + (miss ? `（${miss} 条找不到对应点位，已跳过）` : "") +
+              " · 改动会自动套上金环，按「提交审核」送审");
+        return;
+      }
+      if(!confirm(`导入 ${arr.length} 个点位，覆盖当前 ${places.length} 个？`)) return;
+      places = arr.map(p=>({id:p.id||("i"+Math.random().toString(36).slice(2,7)), n:p.n||"", t:p.t||"其他", x:+p.x, y:+p.y, note:p.note||"", src:p.src||"manual"}));
+      index(); persist(); rebuild(); toast("已导入 " + places.length + " 个点位");
+    }catch(err){ toast("导入失败：" + err.message); }
+  };
+  fr.readAsText(f);
+  e.target.value = "";
+};
+document.getElementById("btnReset").onclick = () => {
+  if(!confirm("清空本地修改，恢复初始数据集？导出的 JSON 不受影响。")) return;
+  localStorage.removeItem(LS);
+  places = JSON.parse(JSON.stringify(SEED));
+  index(); rebuild(); toast("已恢复初始数据");
+};
+
+function rebuild(){
+  world.querySelectorAll(".mk").forEach(m=>m.remove());
+  labelLayer.innerHTML = ""; labelMap.clear();
+  selId = null; closeInsp();
+  buildMarkers(); refresh(); renderChips();
+}
+
+/* ═════════ 云端：提交 → 审核 → 所有人可见 ═════════ */
+const CLOUD_ON = !!(typeof CLOUD !== "undefined" && CLOUD && CLOUD.endpoint &&
+                    CLOUD.publishableKey && window.WorkBuddyCloud);
+let cloud = null, myUser = null, canReview = false, queue = [], syncTimer = 0;
+
+function cloudErr(e){
+  if(!e) return "未知错误";
+  const m = e.message || String(e);
+  if(/Failed to fetch|NetworkError|network/i.test(m)) return "网络不通，稍后重试";
+  if(/rate limit|too many|per minute|per hour|1 text message/i.test(m))
+    return "邮件发得太频繁 —— 内置邮件服务每分钟只放 1 封。等 1 分钟再点，或改用上面的「口令直通」，不发邮件";
+  if(/JWT|jwt|token|401/i.test(m)) return "登录已失效，请重新登录";
+  if(/23505/.test(m)) return "这条已经在队列里了";
+  return m.slice(0, 140);
+}
+function cloudBoot(){
+  if(!CLOUD_ON) return false;
+  try{
+    cloud = WorkBuddyCloud.createWorkBuddyCloud({
+      endpoint: CLOUD.endpoint,
+      oauthRelayBaseUrl: CLOUD.oauthRelayBaseUrl,
+      publishableKey: CLOUD.publishableKey
+    });
+  }catch(e){ console.warn("[cloud] init", e.message); return false; }
+  return true;
+}
+
+/* ── 拉取已审核的数据（所有人看到的就是这份） ── */
+async function pullApproved(quiet){
+  if(!cloud) return false;
+  let rows = [], from = 0;
+  for(;;){
+    const { data, error } = await cloud.database.from("places")
+      .select("*").order("id").range(from, from + 999);
+    if(error){ if(!quiet) toast("读取云端失败：" + cloudErr(error)); return false; }
+    rows = rows.concat(data || []);
+    if(!data || data.length < 1000) break;
+    from += 1000;
+  }
+  const n = applyApproved(rows);
+  if(quiet && n) toast(`已同步 ${n} 处审校结果`);
+  return true;
+}
+function applyApproved(rows){
+  let n = 0;
+  for(const r of rows){
+    if(!r || !r.id) continue;
+    let p = byId.get(r.id);
+    if(p && p.fx) continue;                            // 本地未提交的改动优先
+    if(p && p.sub){                                    // 刚提交、等审核中：云端还没追上就保留本地
+      const same = (r.n || "") === (p.n || "") &&
+                   isFinite(+r.x) && Math.abs(+r.x - p.x) < 3 && Math.abs(+r.y - p.y) < 3;
+      if(!same) continue;
+      delete p.sub;
+    }
+    if(!p){
+      p = { id:r.id, n:"", t:"", x:+r.x || 0, y:+r.y || 0, note:"", src:"vision" };
+      places.push(p); n++;
+    }
+    if((r.n || "") !== (p.n || "")){ p.n = r.n || ""; n++; }
+    if(r.t) p.t = r.t;
+    if(isFinite(+r.x)) p.x = +r.x;
+    if(isFinite(+r.y)) p.y = +r.y;
+    if(r.note) p.note = r.note;
+    if(+r.ig) p.ig = 1; else delete p.ig;
+    if(p.n) p.src = "vision";
+    // 审核通过的即可视为新基线，别让它再被算成「待提交」
+    BASE.set(r.id, {
+      id:r.id, n:r.n || "", t:r.t || "", x:+r.x || 0, y:+r.y || 0,
+      note:r.note || "", ig:+r.ig ? 1 : 0
+    });
+  }
+  if(n){ index(); rebuild(); renderWho(); }
+  return n;
+}
+
+/* ── 提交：匿名也能交，落到 proposals 待审。先写一句「提交说明」，像 commit message ── */
+function changeSummary(p){
+  const b = BASE.get(p.id) || {};
+  const out = [];
+  if((p.n || "") !== (b.n || "")){
+    out.push(b.n ? `<s>${esc(b.n)}</s> → <em>${esc(p.n || "（清空）")}</em>` : `新名 <em>${esc(p.n || "")}</em>`);
+  }
+  if(p.ig && !b.ig) out.push("标为「不是地名」");
+  if(isFinite(+b.x) && (Math.abs(Math.round(p.x) - Math.round(b.x)) > 2 ||
+                        Math.abs(Math.round(p.y) - Math.round(b.y)) > 2))
+    out.push(`位置 → ${Math.round(p.x)},${Math.round(p.y)}`);
+  if((p.note || "") !== (b.note || "")) out.push("改了备注");
+  if(!b.id) out.push("新增点位");
+  return out.join(" · ") || "（无实质变化）";
+}
+function openCommit(){
+  const arr = places.filter(p => p.fx);
+  if(!arr.length){ toast("你还没有改动任何点位"); return; }
+  if(!cloud){ exportFixFile(arr); return; }
+  document.getElementById("cmCount").textContent = arr.length + " 处";
+  document.getElementById("cmList").innerHTML = arr.slice(0, 12).map(p =>
+    `<li><b>${esc(p.n || p.id)}</b><span class="cid">${esc(p.id)}</span><br>${changeSummary(p)}</li>`
+  ).join("") + (arr.length > 12 ? `<li class="more">还有 ${arr.length - 12} 处…</li>` : "");
+  document.getElementById("cmMsg").value = "";
+  paintWho();
+  document.getElementById("commitbox").classList.add("on");
+  setTimeout(() => { const m = document.getElementById("cmMsg"); if(m) m.focus(); }, 60);
+}
+async function submitEdits(reason){
+  const arr = places.filter(p => p.fx);
+  if(!arr.length){ toast("你还没有改动任何点位"); return; }
+  if(!cloud){ exportFixFile(arr); return; }
+  if(reason === undefined){ openCommit(); return; }
+  const rows = arr.map(p => {
+    const b = BASE.get(p.id) || {};
+    return {
+      place_id: p.id, n: p.n || "", t: p.t || "", note: p.note || "",
+      ig: p.ig ? 1 : 0, x: Math.round(p.x), y: Math.round(p.y),
+      before_n: b.n || "",
+      before_x: b.x != null ? Math.round(b.x) : null,
+      before_y: b.y != null ? Math.round(b.y) : null,
+      before_ig: b.ig ? 1 : 0,
+      reason: (reason || "").slice(0, 500),
+      author: (editor || "匿名").slice(0, 40)
+    };
+  });
+  const ins = await cloud.database.from("proposals").insert(rows).select("id");
+  if(ins.error){ toast("提交失败：" + cloudErr(ins.error)); return; }
+  rememberSub((ins.data || []).map(r => r.id));
+  for(const p of arr){ p.fx = 0; p.sub = 1; paintMarker(p); }
+  persist(); refresh(); renderWho();
+  toast(`已提交 ${rows.length} 条，审核通过后所有人可见`);
+  loadQueue();
+}
+function exportFixFile(arr){
+  const out = (arr || places.filter(p => p.fx)).map(p => ({
+    id: p.id, n: p.n || "", t: p.t || "", x: Math.round(p.x), y: Math.round(p.y),
+    note: p.note || "", ig: p.ig || 0
+  }));
+  const blob = new Blob([JSON.stringify({
+    v:2, kind:"fix", editor: editor || "匿名", submittedAt: new Date().toISOString(), places: out
+  }, null, 1)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "平江图_修订_" + new Date().toISOString().slice(0,10) + ".json";
+  a.click(); URL.revokeObjectURL(a.href);
+  toast(`云端未接，已导出 ${out.length} 条修订文件`);
+}
+
+/* ── 审核登录：口令直通（默认） / 邮箱验证码（备用） ──
+   邮箱验证码走内置邮件服务，每分钟只准发 1 封、每小时还有总额度，很容易撞墙；
+   口令直通由数据库函数 pj_review 校验，不发信、不限频，维护者一人一份。 */
+let otp = null;
+const LS_MKEY = "pjmap.mkey";
+let mKey = "";
+let authOpen = false;                              // 邮箱验证码那块默认收起
+try{ mKey = localStorage.getItem(LS_MKEY) || ""; }catch(e){}
+function keyMsg(t, bad){
+  const el = document.getElementById("keyMsg");
+  if(!el) return;
+  el.textContent = t; el.classList.toggle("bad", !!bad);
+}
+async function doKeyLogin(){
+  if(!cloud){ keyMsg("云端未连接", 1); return; }
+  const v = (document.getElementById("pjKey").value || "").trim();
+  if(!v){ keyMsg("请填维护者口令", 1); return; }
+  const btn = document.getElementById("keyGo");
+  btn.disabled = true; keyMsg("正在校验…");
+  try{
+    const r = await cloud.database.rpc("pj_review", { p_key: v, p_id: 0, p_act: "check" });
+    btn.disabled = false;
+    if(r.error){ keyMsg("校验失败：" + cloudErr(r.error), 1); return; }
+    const d = r.data || {};
+    if(d.code === "bad_key"){ keyMsg("口令不对", 1); return; }
+    // 口令正确时函数会回执 no_proposal（id=0 不存在），这就够了
+    mKey = v;
+    try{ localStorage.setItem(LS_MKEY, v); }catch(e){}
+    canReview = true;
+    renderAuth();
+    await loadQueue();
+    keyMsg("已用口令进入审核 · 不发邮件、不限频");
+    toast("已是审核状态，可以逐条通过 / 驳回");
+  }catch(e){
+    btn.disabled = false;
+    keyMsg("校验失败：" + e.message, 1);
+  }
+}
+function keyOut(){
+  mKey = "";
+  try{ localStorage.removeItem(LS_MKEY); }catch(e){}
+  canReview = false;
+  renderAuth();
+  keyMsg("已退出口令审核。随时可以再输一次。");
+}
+function authMsg(t, bad){
+  const el = document.getElementById("authMsg");
+  if(!el) return;
+  el.textContent = t; el.classList.toggle("bad", !!bad);
+}
+async function sendCode(){
+  if(!cloud){ authMsg("云端未连接", 1); return; }
+  const email = (document.getElementById("authEmail").value || "").trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ authMsg("请输入正确的邮箱", 1); return; }
+  const btn = document.getElementById("authSend");
+  if(btn.disabled) return;
+  btn.disabled = true; authMsg("正在发送…");
+  const r = await cloud.auth.sendOtp({ email });
+  btn.disabled = false;
+  if(r.error){ authMsg("发送失败：" + cloudErr(r.error), 1); return; }
+  otp = { email, verificationId: r.data.verificationId, isExistingUser: r.data.isExistingUser };
+  authMsg("验证码已发到 " + email + "，查收后填入右边的框");
+}
+async function doLogin(){
+  if(!cloud) return;
+  const code = (document.getElementById("authCode").value || "").trim();
+  if(!otp){ authMsg("先点「发验证码」", 1); return; }
+  if(!code){ authMsg("填一下收到的验证码", 1); return; }
+  authMsg("正在登录…");
+  const r = await cloud.auth.verifyOtp({
+    email: otp.email, verificationId: otp.verificationId,
+    isExistingUser: otp.isExistingUser, token: code
+  });
+  if(r.error){ authMsg("登录失败：" + cloudErr(r.error), 1); return; }
+  otp = null;
+  myUser = (r.data && r.data.user) || { email: document.getElementById("authEmail").value };
+  await afterLogin();
+}
+async function afterLogin(){
+  canReview = false;
+  try{
+    const r = await cloud.database.rpc("am_i_reviewer");
+    canReview = r.data === true;
+  }catch(e){}
+  renderAuth();
+  if(canReview){ authMsg("已登录，具有审核权"); loadQueue(); }
+  else authMsg("已登录，但这个账号还没有审核权。输入授权码可开通，或找维护者要。");
+}
+async function claimReviewer(){
+  if(!cloud) return;
+  const code = (document.getElementById("claimCode").value || "").trim();
+  if(!code){ authMsg("填一下授权码", 1); return; }
+  const r = await cloud.database.rpc("claim_reviewer", { p_name: editor || "审核员", p_code: code });
+  if(r.error){ authMsg("开通失败：" + cloudErr(r.error), 1); return; }
+  if(r.data === true){ authMsg("审核权已开通"); await afterLogin(); }
+  else authMsg("授权码不对", 1);
+}
+function renderAuth(){
+  const b = document.getElementById("btnAuth");
+  const cr = document.getElementById("claimrow");
+  const ar = document.getElementById("authrow");
+  const kr = document.getElementById("keyrow");
+  const ko = document.getElementById("keyOut");
+  const pk = document.getElementById("pjKey");
+  const kg = document.getElementById("keyGo");
+  const at = document.getElementById("authToggle");
+  if(!b) return;
+  const who = myUser ? (myUser.name || myUser.email || "我的账号") : "";
+  const on = canReview || !!mKey;
+  b.textContent = !cloud ? "云端未接" : (on ? (mKey ? "审核中 · 口令" : "审核中") : (myUser ? "已登录" : "审核登录"));
+  b.classList.toggle("on", !!on);
+  b.title = !on ? "点这里进入审核" : (mKey ? "已用维护者口令进入审核，不发邮件" : "已登录：" + who);
+  if(cr) cr.style.display = (myUser && !canReview) ? "flex" : "none";
+  if(ar) ar.style.display = (authOpen && !myUser && !on) ? "flex" : "none";
+  if(kr) kr.style.display = (myUser && !mKey) ? "none" : "flex";
+  if(pk) pk.style.display = (mKey && canReview) ? "none" : "";
+  if(kg) kg.style.display = (mKey && canReview) ? "none" : "";
+  if(ko) ko.style.display = (mKey && canReview) ? "" : "none";
+  if(at) at.style.display = (mKey && canReview) ? "none" : "";
+  if(mKey && canReview) keyMsg("已用维护者口令进入审核 · 不发邮件、不限频");
+}
+
+/* ═══════════ 工作台：我的标注 / 待审批 / 已通过 / 已驳回 ═══════════ */
+let deskTab = "mine";
+function openDesk(tab){
+  if(tab) deskTab = tab;
+  document.getElementById("desk").classList.add("on");
+  renderAuth();
+  paintDesk();
+  loadMine();
+}
+function closeDesk(){ document.getElementById("desk").classList.remove("on"); }
+function deskRow(o){
+  // o: {n,id,sub,st,stLabel,ds}
+  return `<div class="drow" data-id="${esc(o.id)}">` +
+    `<span class="nm${o.n ? "" : " empty"}">${esc(o.n || (o.ig ? "不是地名" : "（未填名）"))}</span>` +
+    `<span class="ds">${esc(o.ds || "")}</span>` +
+    (o.st ? `<span class="st ${o.st}">${o.stLabel}</span>` : "") +
+    `<span class="dt">${esc(o.id)}</span></div>`;
+}
+function paintDesk(){
+  const body = document.getElementById("deskBody");
+  if(!body) return;
+  document.querySelectorAll("#deskTabs .tab").forEach(t =>
+    t.classList.toggle("on", t.dataset.tab === deskTab));
+  const nPend = places.filter(p => p.sub && !p.fx).length;
+  const nDirty = places.filter(p => p.fx || isDirty(p)).length;
+  const dp = document.getElementById("dPend");
+  if(dp) dp.textContent = String(queue.length);
+  const sum = document.getElementById("deskSum");
+  if(sum) sum.textContent = `待提交 ${nDirty} · 待审批 ${nPend}`;
+
+  if(deskTab === "mine"){
+    const dirty = places.filter(p => p.fx || isDirty(p));
+    const sub   = places.filter(p => p.sub && !p.fx);
+    if(!dirty.length && !sub.length){
+      body.innerHTML = `<div class="empty"><b>你还没有改动</b>
+        进「标注模式」，点图上的红点改名、改类型或挪位置；<br>改过的点会套上金环，出现在这里。</div>`;
+      return;
+    }
+    body.innerHTML =
+      (dirty.length ? `<div class="sect">未提交 · ${dirty.length} 处</div>` +
+        dirty.slice(0, 80).map(p => deskRow({
+          n:p.n, id:p.id, st:"dirty", stLabel:"待提交",
+          ds:changeSummary(p)
+        })).join("") : "") +
+      (sub.length ? `<div class="sect">已提交 · 等审核 · ${sub.length} 处</div>` +
+        sub.slice(0, 80).map(p => deskRow({
+          n:p.n, id:p.id, st:"wait", stLabel:"待审批", ds:"已送入公开队列"
+        })).join("") : "");
+    return;
+  }
+  if(deskTab === "pending"){
+    if(!queue.length){
+      body.innerHTML = cloud
+        ? `<div class="empty"><b>现在没有待审批的修订</b>
+        大家提交的内容都审完了。</div>`
+        : `<div class="empty"><b>离线版没有审批队列</b>
+        审批要在联网的正式版里做。<br>这里的标注照常可用，改完按「导出修订」存成文件。</div>`;
+      return;
+    }
+    body.innerHTML = queue.map(pr => {
+      const isIg = (+pr.ig === 1);
+      const mine = mySubIds.has(String(pr.id));
+      const head = isIg ? "标为「不是地名」" : (pr.n || "（未填名）");
+      const ds = [];
+      if(!isIg && (pr.before_n || "") !== (pr.n || "")) ds.push(`名字「${pr.before_n || "空"}」→「${pr.n || "空"}」`);
+      if(pr.x != null && (pr.before_x !== pr.x || pr.before_y !== pr.y)) ds.push("位置已修正");
+      if(pr.reason) ds.push("依据：" + pr.reason);
+      return `<div class="prop" data-id="${pr.id}">
+        <div class="hd"><b>${esc(head)}</b><span class="id">${esc(pr.place_id)}</span><span class="tm">${fmtTime(pr.created_at)}</span>${mine ? `<span class="st wait" style="font-size:9px;border:1px solid currentColor;padding:0 3px;color:var(--blue)">我提交的</span>` : ""}</div>
+        <div class="df">${esc(ds.join("　") || "（无说明）")}</div>
+        <div class="rs">${esc(pr.author || "匿名")}</div>
+        <div class="acts">
+          ${canReview ? `<button class="b primary" data-act="ok">通过</button><button class="b" data-act="no">驳回</button>` : ""}
+          <button class="b" data-act="go">看位置</button>
+        </div>
+      </div>`;
+    }).join("");
+    return;
+  }
+  if(!mineRows.length){
+    body.innerHTML = `<div class="empty"><b>暂无记录</b>
+      ${deskTab === "done" ? "通过后的修订会记在这里，方便回看是谁改的。" : "被驳回的修订会记在这里，可以看看审核人的意见。"}</div>`;
+    return;
+  }
+  body.innerHTML = mineRows.filter(r => r.status === deskTab).map(r => deskRow({
+    n:r.n, id:r.place_id,
+    st:deskTab === "done" ? "ok" : "no",
+    stLabel:deskTab === "done" ? "已通过" : "已驳回",
+    ds:(r.reviewer ? "审核：" + r.reviewer + "　" : "") + fmtTime(r.reviewed_at)
+  })).join("");
+}
+let mineRows = [];                 // 我提交过的提案及其审批结果
+async function loadMine(){
+  const body = document.getElementById("deskBody");
+  if(!cloud){ paintDesk(); return; }
+  const ids = [...mySubIds];
+  if(!ids.length){ mineRows = []; paintDesk(); return; }
+  const { data, error } = await cloud.database.from("proposals")
+    .select("id,place_id,n,status,reviewer,reviewed_at,reason")
+    .in("id", ids.slice(-200)).order("reviewed_at", { ascending: false });
+  if(error){ mineRows = []; paintDesk(); return; }
+  mineRows = data || [];
+  paintDesk();
+}
+/* 我的提交：本地记住投过的提案 id，便于在「工作台」里看审批结果 */
+let mySubIds = new Set();
+try{ mySubIds = new Set(JSON.parse(localStorage.getItem("pjmap.mysubs") || "[]")); }catch(e){}
+function rememberSub(ids){
+  let changed = false;
+  for(const id of ids){ if(!mySubIds.has(String(id))){ mySubIds.add(String(id)); changed = true; } }
+  if(changed){ try{ localStorage.setItem("pjmap.mysubs", JSON.stringify([...mySubIds].slice(-500))); }catch(e){} }
+}
+function openQueue(){
+  document.getElementById("queue").classList.add("on");
+  renderAuth();
+  loadQueue();
+}
+function closeQueue(){ document.getElementById("queue").classList.remove("on"); }
+async function loadQueue(){
+  const qn = document.getElementById("qnum");
+  if(!cloud){ if(qn) qn.textContent = "—"; paintQueue(); return; }
+  const { data, error } = await cloud.database.from("proposals")
+    .select("*").eq("status", "pending").order("created_at", { ascending: true }).limit(300);
+  if(error){ toast("读取待审失败：" + cloudErr(error)); paintQueue(); return; }
+  queue = data || [];
+  paintQueue();
+}
+function fmtTime(iso){
+  try{
+    const d = new Date(iso);
+    return d.toLocaleString("zh-CN", { month:"numeric", day:"numeric", hour:"2-digit", minute:"2-digit" });
+  }catch(e){ return ""; }
+}
+function diffRow(label, a, b){
+  const A = a == null ? "" : String(a), B = b == null ? "" : String(b);
+  if(A === B) return `<div>${label}：${B ? esc(B) : "（空）"}</div>`;
+  return `<div>${label}：<s>${A ? esc(A) : "（空）"}</s> → <em>${B ? esc(B) : "（空）"}</em></div>`;
+}
+function paintQueue(){
+  const qn = document.getElementById("qnum");
+  if(qn) qn.textContent = queue.length ? String(queue.length) : "0";
+  const bm = document.getElementById("btnMore");
+  if(bm) bm.classList.toggle("alert", queue.length > 0);
+  const bd = document.getElementById("btnDesk");
+  if(bd){
+    const nMine = places.filter(p => p.fx || p.sub).length;
+    const nTodo = nMine + (canReview ? queue.length : 0);
+    bd.classList.toggle("alert", nTodo > 0);
+    bd.textContent = nTodo ? `工作台 ·${nTodo}` : "工作台";
+  }
+  const cnt = document.getElementById("qcount");
+  if(cnt) cnt.textContent = queue.length ? queue.length + " 条待审" : "";
+  const box = document.getElementById("qlist");
+  if(!box) return;
+  if(!queue.length){
+    box.innerHTML = `<div class="prop"><div class="df">${cloud ? "现在没有待审的修订 —— 大家改的都清完了。" : "云端未连接，暂时只能导入导出文件。"}</div></div>`;
+    return;
+  }
+  box.innerHTML = queue.map(pr => {
+    const isIg = (+pr.ig === 1);
+    const head = isIg ? "标为「不是地名」" : (pr.n || "（未填名）");
+    return `<div class="prop" data-id="${pr.id}">
+      <div class="hd"><b>${esc(head)}</b><span class="id">${esc(pr.place_id)}</span><span class="tm">${fmtTime(pr.created_at)}</span></div>
+      <div class="df">
+        ${isIg ? "" : diffRow("名字", pr.before_n, pr.n)}
+        ${(pr.x != null && (pr.before_x !== pr.x || pr.before_y !== pr.y))
+            ? `<div>位置：<s>${pr.before_x ?? "?"}, ${pr.before_y ?? "?"}</s> → <em>${Math.round(pr.x)}, ${Math.round(pr.y)}</em></div>` : ""}
+        ${pr.note ? `<div>备注：${esc(pr.note)}</div>` : ""}
+        ${pr.t ? `<span class="vtag">${esc(pr.t)}</span>` : ""}
+      </div>
+      <div class="rs">${esc(pr.author || "匿名")}${pr.reason ? " · 依据：" + esc(pr.reason) : ""}</div>
+      <div class="acts">
+        <button class="b primary" data-act="ok">通过</button>
+        <button class="b" data-act="no">驳回</button>
+        <button class="b" data-act="go">看位置</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+/* 通过之后落到本地：row 是合并好的权威值，直接盖上去 */
+function acceptLocal(row, pr){
+  const q = byId.get(pr.place_id);
+  if(!q){ applyApproved([row]); return; }
+  delete q.fx; delete q.sub;
+  q.n = row.n || "";
+  if(row.t) q.t = row.t;
+  if(row.x != null) q.x = +row.x;
+  if(row.y != null) q.y = +row.y;
+  q.note = row.note || "";
+  if(+row.ig) q.ig = 1; else delete q.ig;
+  if(q.n) q.src = "vision";
+  paintMarker(q);
+  BASE.set(row.id, { id:row.id, n:row.n || "", t:row.t || "", x:+row.x || 0,
+                     y:+row.y || 0, note:row.note || "", ig:+row.ig ? 1 : 0 });
+}
+async function reviewProposal(pid, ok){
+  const pr = queue.find(x => String(x.id) === String(pid));
+  if(!pr) return;
+
+  /* ── 路径一：口令直通（默认）。判定与落库全在数据库函数里完成，前端只调用与回显 ── */
+  if(mKey){
+    const r = await cloud.database.rpc("pj_review", {
+      p_key: mKey,
+      p_id: +pid,
+      p_act: ok ? "approve" : "reject",
+      p_by: (editor || (myUser && (myUser.name || myUser.email)) || "")
+    });
+    if(r.error){ toast("审核失败：" + cloudErr(r.error)); return; }
+    const d = r.data || {};
+    if(!d.ok){
+      if(d.code === "bad_key"){
+        mKey = ""; canReview = false;
+        try{ localStorage.removeItem(LS_MKEY); }catch(e){}
+        renderAuth(); keyMsg("口令已失效，请重新输入", 1);
+      }
+      if(d.code === "not_pending"){
+        queue = queue.filter(x => String(x.id) !== String(pid));
+        paintQueue();
+      }
+      toast("没成：" + (d.msg || d.code || "未知原因"));
+      return;
+    }
+    if(ok){
+      const row = d.row || { id: pr.place_id, n: pr.n || "", t: pr.t || "",
+                             x: pr.x, y: pr.y, note: pr.note || "", ig: +pr.ig ? 1 : 0 };
+      acceptLocal(row, pr);
+      toast("已通过，所有人下次打开就能看到");
+    }else{
+      toast("已驳回");
+    }
+    queue = queue.filter(x => String(x.id) !== String(pid));
+    paintQueue(); persist(); refresh(); renderWho();
+    return;
+  }
+
+  /* ── 路径二：邮箱登录后直接写表（需要 RLS 认可的审核权） ── */
+  const label = (myUser && (myUser.name || myUser.email)) || editor || "审核员";
+  const p = byId.get(pr.place_id) || {};
+  if(ok){
+    // 只把「相对基线真的改了」的字段写回去，避免把没改的字段清空
+    const nameChanged = pr.n != null && (pr.n || "") !== (pr.before_n || "");
+    const noteChanged = pr.note != null && pr.note !== (p.note || "");
+    const igChanged = pr.ig != null && (+pr.ig !== +(pr.before_ig || 0));
+    const row = {
+      id: pr.place_id,
+      n: nameChanged ? (pr.n || "") : (p.n || ""),
+      t: pr.t || p.t || "其他",
+      x: pr.x != null ? pr.x : p.x,
+      y: pr.y != null ? pr.y : p.y,
+      note: noteChanged ? pr.note : (p.note || ""),
+      ig: igChanged ? (+pr.ig ? 1 : 0) : (p.ig ? 1 : 0),
+      src: p.src || "vision",
+      editor: (pr.author || "").slice(0, 40),
+      reviewer: label.slice(0, 40),
+      updated_at: new Date().toISOString()
+    };
+    const up = await cloud.database.from("places").upsert(row, { onConflict: "id" }).select("id");
+    if(up.error){ toast("写入失败：" + cloudErr(up.error)); return; }
+    if(!up.data || !up.data.length){ authMsg("没有写入权限 —— 这个账号还没有审核权", 1); return; }
+    const r2 = await cloud.database.from("proposals")
+      .update({ status:"approved", reviewer: label.slice(0,40), reviewed_at: new Date().toISOString() })
+      .eq("id", pr.id).select("id");
+    if(r2.error){ toast("标记通过失败：" + cloudErr(r2.error)); }
+    else if(!r2.data || !r2.data.length){ authMsg("没有权限改队列 —— 需要审核权", 1); }
+    acceptLocal(row, pr);
+    toast("已通过，所有人下次打开就能看到");
+  }else{
+    const r2 = await cloud.database.from("proposals")
+      .update({ status:"rejected", reviewer: label.slice(0,40), reviewed_at: new Date().toISOString() })
+      .eq("id", pr.id).select("id");
+    if(r2.error){ toast("驳回失败：" + cloudErr(r2.error)); return; }
+    if(!r2.data || !r2.data.length){ authMsg("没有权限 —— 需要审核权", 1); return; }
+    toast("已驳回");
+  }
+  queue = queue.filter(x => String(x.id) !== String(pid));
+  paintQueue(); persist(); refresh(); renderWho();
+}
+
+/* ── 接线 ── */
+(function wireCloud(){
+  cloudBoot();                                   // 先建客户端，按钮文案才对
+  const bq = document.getElementById("btnQueue"), ba = document.getElementById("btnAuth");
+  if(bq) bq.onclick = openQueue;
+  if(ba) ba.onclick = openQueue;
+  const qc = document.getElementById("qclose"); if(qc) qc.onclick = closeQueue;
+  const qm = document.getElementById("queue");
+  if(qm) qm.onclick = e => { if(e.target === qm) closeQueue(); };
+  const as = document.getElementById("authSend"); if(as) as.onclick = sendCode;
+  const ag = document.getElementById("authGo"); if(ag) ag.onclick = doLogin;
+  const kg = document.getElementById("keyGo"); if(kg) kg.onclick = doKeyLogin;
+  const kx = document.getElementById("keyOut"); if(kx) kx.onclick = keyOut;
+  const at = document.getElementById("authToggle"); if(at) at.onclick = () => {
+    authOpen = !authOpen; renderAuth();
+    if(authOpen) setTimeout(() => { const e = document.getElementById("authEmail"); if(e) e.focus(); }, 30);
+  };
+  const pk = document.getElementById("pjKey");
+  if(pk) pk.onkeydown = e => { if(e.key === "Enter"){ e.preventDefault(); doKeyLogin(); } };
+  const ao = document.getElementById("authOut"); if(ao) ao.onclick = async () => {
+    try{ await cloud.auth.signOut(); }catch(e){}
+    myUser = null; canReview = false; queue = []; otp = null;
+    renderAuth(); paintQueue(); authMsg("已退出登录。浏览和提交修订不需要登录。");
+  };
+  const cg = document.getElementById("claimGo"); if(cg) cg.onclick = claimReviewer;
+  /* 上次用过的口令静默复核一遍：通了就直接是审核态，省得每次开弹层再输 */
+  if(mKey && cloud) (async () => {
+    try{
+      const r = await cloud.database.rpc("pj_review", { p_key: mKey, p_id: 0, p_act: "check" });
+      if(r.data && r.data.ok){ canReview = true; renderAuth(); loadQueue(); }
+      else { mKey = ""; try{ localStorage.removeItem(LS_MKEY); }catch(e){} renderAuth(); }
+    }catch(e){}
+  })();
+  const qlist = document.getElementById("qlist");
+  if(qlist) qlist.onclick = e => {
+    const btn = e.target.closest("[data-act]"); if(!btn) return;
+    const card = btn.closest(".prop"); if(!card) return;
+    const act = btn.dataset.act;
+    if(act === "go"){
+      const pr = queue.find(x => String(x.id) === String(card.dataset.id));
+      if(pr){ closeQueue(); centerOn(+pr.x || 2000, +pr.y || 3300, Math.max(s, 0.95)); }
+      return;
+    }
+    if(btn.disabled) return;
+    btn.disabled = true;
+    reviewProposal(card.dataset.id, act === "ok").finally(()=>{ btn.disabled = false; });
+  };
+  const qr = document.getElementById("qrefresh"); if(qr) qr.onclick = () => loadQueue();
+  renderAuth();
+})();
+document.getElementById("zin").onclick = () => { const r=stage.getBoundingClientRect(); zoomAt(1.35, r.width/2, r.height/2); };
+document.getElementById("zout").onclick = () => { const r=stage.getBoundingClientRect(); zoomAt(1/1.35, r.width/2, r.height/2); };
+let viewAll = false;
+function toggleView(){
+  if(viewAll){ centerOn(2030, 3350, 0.55); }
+  else { fitAll(); }
+  viewAll = !viewAll;
+  const b = document.getElementById("zfit");
+  b.classList.toggle("on", viewAll);
+  b.title = viewAll ? "回到阅读视图（55%·城市中心）" : "全图（只看格局；读碑上的字请用滚轮放大）";
+}
+document.getElementById("zfit").onclick = toggleView;
+
+/* ── 工作台：三个动作的查看入口 ── */
+document.getElementById("btnDesk").onclick = () => openDesk("mine");
+document.getElementById("deskClose").onclick = closeDesk;
+document.getElementById("deskAuth").onclick = () => { closeDesk(); openQueue(); };
+document.getElementById("desk").onclick = e => {
+  if(e.target === e.currentTarget) closeDesk();
+};
+document.getElementById("deskTabs").onclick = e => {
+  const t = e.target.closest(".tab"); if(!t) return;
+  deskTab = t.dataset.tab; paintDesk();
+  if(deskTab === "pending") loadQueue();
+  if(deskTab === "done" || deskTab === "rej") loadMine();
+};
+document.getElementById("deskBody").onclick = e => {
+  // 审批动作
+  const btn = e.target.closest("[data-act]"); if(btn) btn.disabled = true;
+  if(btn){
+    const card = btn.closest(".prop");
+    if(card){
+      const act = btn.dataset.act;
+      if(act === "go"){
+        const pr = queue.find(x => String(x.id) === String(card.dataset.id));
+        if(pr){ closeDesk(); centerOn(+pr.x || 2000, +pr.y || 3300, Math.max(s, 0.95)); }
+        return;
+      }
+      reviewProposal(card.dataset.id, act === "ok")
+        .then(() => { loadMine(); loadQueue(); });
+      return;
+    }
+  }
+  // 点条目 → 飞到该点并打开检视面板
+  const row = e.target.closest(".drow"); if(!row) return;
+  closeDesk();
+  const id = row.dataset.id;
+  const p = byId.get(id);
+  if(p){ document.body.classList.add("editing"); stage.classList.add("edit"); setEditBtn(true); }
+  select(id, true);
+  if(p) flyTo(p.x, p.y, Math.max(s, 1.1));
+};
+function zoomAt(k, mx, my){
+  const ns = Math.max(0.06, Math.min(3.2, s*k));
+  tx = mx - (mx - tx) * (ns/s); ty = my - (my - ty) * (ns/s);
+  s = ns; apply();
+}
+/* 默认：按宽度铺满。这张图是 4414×7064 的长卷，若一开机就塞进一屏，
+   整幅缩到 1/8，碑上的字只剩三四个像素——不是图不清，是根本没给它像素。 */
+function fit(){
+  const r = stage.getBoundingClientRect();
+  s = Math.min(r.width / IW, 1) * 0.985;
+  tx = (r.width - IW * s) / 2;
+  ty = 0;                                  // 长卷从顶部读起，往下滚
+  apply();
+}
+/* ⤢ 全图：整卷缩进一屏，看的是格局不是字 */
+function fitAll(){
+  const r = stage.getBoundingClientRect();
+  s = Math.min(r.width / IW, r.height / IH) * 0.98;
+  tx = (r.width - IW * s) / 2; ty = (r.height - IH * s) / 2;
+  apply();
+}
+
+for(const t of TYPES){
+  const o = document.createElement("option"); o.value = t; o.textContent = t; fType.appendChild(o);
+}
+load();
+buildMarkers();
+renderChips();
+refresh();
+renderWho();
+fit();
+if(cloud){
+  pullApproved(true).then(()=>{ loadQueue(); });
+  syncTimer = setInterval(()=>{
+    if(document.hidden) return;
+    if(insp.style.display === "block") return;        // 正在改点位时不打断
+    if(document.getElementById("queue").classList.contains("on")) return;
+    pullApproved(true);
+  }, 120000);
+}else{
+  const ba = document.getElementById("btnAuth");
+  if(ba){ ba.textContent = "云端未接"; ba.title = "本次打开没能加载云端组件，可用导入导出交换修订"; }
+  /* 离线版没有云端：提交按钮改为「导出修订」，不让它看起来像能直接上线 */
+  const cg = document.getElementById("cbGo");
+  if(cg){
+    cg.textContent = "导出修订";
+    cg.title = "离线版没有云端：把改动导出成 JSON，可导入线上版提交审核";
+  }
+  const dp = document.getElementById("dPend");
+  if(dp) dp.textContent = "—";
+}
+(function initView(){
+  const h = location.hash.replace("#", "");
+  const m = h.split(",").map(Number);
+  if(m.length >= 3 && m.every(v=>isFinite(v))){
+    centerOn(m[0], m[1], m[2]);
+    if(h.split(",")[3] === "1") document.body.classList.add("showauto");
+    return;
+  }
+  centerOn(2030, 3350, 0.55);
+})();
+window.addEventListener("keydown", e => {
+  if(e.key === "/" && !(document.activeElement && document.activeElement.tagName === "INPUT")){
+    e.preventDefault();
+    /* 窄屏下侧栏在抽屉里，焦点要落在画布上那个搜索框，否则会落到屏幕外 */
+    const shown = el => el && el.offsetParent !== null && el.getBoundingClientRect().width > 0;
+    const target = (window.innerWidth <= 700 && shown(q2El)) ? q2El : qEl;
+    if(target) target.focus();
+  }
+  if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z"){
+    e.preventDefault(); undoLast();
+  }
+  if(e.key === "Escape"){
+    if(picking){ stopPick(); return; }
+    if(insp.style.display === "block") closeInsp();
+  }
+  {  // 方向键微调红点：1px / ⇧10px
+    const tg = e.target;
+    const typing = tg && /^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName);
+    if(!typing && insp.style.display === "block" &&
+       /^Arrow(Up|Down|Left|Right)$/.test(e.key)){
+      const p = byId.get(selId);
+      if(p){
+        e.preventDefault();
+        const k = e.shiftKey ? 10 : 1;
+        const dx = e.key === "ArrowLeft" ? -k : e.key === "ArrowRight" ? k : 0;
+        const dy = e.key === "ArrowUp" ? -k : e.key === "ArrowDown" ? k : 0;
+        p.x = Math.max(0, Math.min(IW, p.x + dx));
+        p.y = Math.max(0, Math.min(IH, p.y + dy));
+        markFixed(p);
+        const m = markerOf(p.id); if(m) place(m, p);
+        fX.value = Math.round(p.x); fY.value = Math.round(p.y);
+        document.getElementById("posInfo").textContent = "· 已修正";
+        document.getElementById("inspTitle").querySelector("span").textContent =
+          `${p.id} · ${Math.round(p.x)},${Math.round(p.y)}`;
+        showMag(p);
+        persist();
+      }
+    }
+  }
+  if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s"){
+    e.preventDefault(); document.getElementById("btnExport").click();
+  }
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+
+# 工作区私有数据：会话记忆、发布记录（含内部口令，不进公开仓库）
+.workbuddy/
+.wbapp_*.genie
+
+# 大件中间产物（可由脚本重建，不必进版本库）
+地点索引/tiles/
+地点索引/tiles_v/
+地点索引/sheets/
+地点索引/sheets2/
+地点索引/sheets3/
+地点索引/方案/
+地点索引/进度图.png
+
+# 离线单文件产物：7.4MB，由 build.py 生成，随时可重建
+平江图高清/
+
+# 旧底图备份
+平江图在线/map_bak_*/
+
+# Python
+__pycache__/
+*.pyc
+.env
