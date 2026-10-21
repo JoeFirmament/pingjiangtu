@@ -597,6 +597,13 @@ body.picking #stage{cursor:crosshair}
 #claimrow span,#keyrow span{font-size:11px;color:var(--ink-3);flex:1 1 100%}
 #authMsg,#keyMsg{font-size:11px;color:var(--ink-3);line-height:1.6;flex:1 1 100%}
 #authMsg.bad,#keyMsg.bad{color:var(--cinnabar)}
+/* 审核身份条：让「我现在到底有没有审核权」一眼看得到 */
+#qwho{display:none;font-size:11px;color:var(--ink-3);line-height:1.7;margin:0 0 10px;
+  padding:7px 9px;border-radius:2px;background:#f7f5ec}
+#qwho.on{display:block}
+#qwho b{color:var(--ink-2);font-weight:500}
+#qwho.ok{color:#4b6b78;background:#f1f5f6}
+#qwho.ok b{color:#3c5a66}
 #authrow.off{display:none}
 .prop{border:1px solid var(--line);border-left:2px solid #cfc7b0;border-radius:2px;
   background:#fff;padding:11px 12px;margin-bottom:8px}
@@ -884,7 +891,7 @@ body.picking #stage{cursor:crosshair}
       快捷键：<b>/</b> 聚焦搜索　·　<b>⌘Z</b> 撤销　·　<b>⌘S</b> 导出　·　方向键微调红点
     </div>
     <div id="verline">
-      平江图地名库 <b>v1.0.3</b>　·　构建 2026-10-21 23:56　·　<span id="verCnt">点位 —</span>
+      平江图地名库 <b>v1.0.4</b>　·　构建 2026-10-22 02:16　·　<span id="verCnt">点位 —</span>
     </div>
     <div class="mnt">
       <span>本机数据（一般用不到）</span>
@@ -951,6 +958,7 @@ body.picking #stage{cursor:crosshair}
       <button class="b" id="claimGo" type="button">开通审核权</button>
       <span id="claimMsg">这个账号还没有审核权。</span>
     </div>
+    <div id="qwho"></div>
     <div id="qlist"></div>
   </div>
 </div>
@@ -2581,6 +2589,7 @@ function renderAuth(){
   if(ko) ko.style.display = (mKey && canReview) ? "" : "none";
   if(at) at.style.display = (mKey && canReview) ? "none" : "";
   if(mKey && canReview) keyMsg("已用维护者口令进入审核 · 不发邮件、不限频");
+  syncWhoBar();
 }
 
 /* ═══════════ 工作台：我的标注 / 待审批 / 已通过 / 已驳回 ═══════════ */
@@ -2717,11 +2726,26 @@ function fmtTime(iso){
   }catch(e){ return ""; }
 }
 function diffRow(label, a, b){
-  const A = a == null ? "" : String(a), B = b == null ? "" : String(b);
+  const A = a == null ? "" : String(a);
+  const B = b == null ? "" : String(b);
   if(A === B) return `<div>${label}：${B ? esc(B) : "（空）"}</div>`;
   return `<div>${label}：<s>${A ? esc(A) : "（空）"}</s> → <em>${B ? esc(B) : "（空）"}</em></div>`;
 }
+/* 审核身份条：说清「现在是谁在审、通不通过算数」。
+   之前弹层里 通过/驳回 是无条件渲染的 —— 没权限的人点下去只会吃到 RLS 的报错，
+   看起来像「不输口令也能通过」。现在按钮按权限出，身份也写在明处。 */
+function syncWhoBar(){
+  const el = document.getElementById("qwho");
+  if(!el) return;
+  const who = mKey ? "维护者口令" : (myUser ? (myUser.name || myUser.email || "我的账号") : "");
+  el.classList.add("on");
+  el.classList.toggle("ok", !!canReview);
+  el.innerHTML = canReview
+    ? `审核权：<b>${esc(who || "已登录")}</b>　·　点「通过」即刻写进公开数据，所有人刷新可见；退出后按钮就会消失。`
+    : `现在只能浏览、看位置。<b>通过 / 驳回</b>需要审核权：输维护者口令，或用邮箱登录。`;
+}
 function paintQueue(){
+  syncWhoBar();
   const qn = document.getElementById("qnum");
   if(qn) qn.textContent = queue.length ? String(queue.length) : "0";
   const bm = document.getElementById("btnMore");
@@ -2755,8 +2779,7 @@ function paintQueue(){
       </div>
       <div class="rs">${esc(pr.author || "匿名")}${pr.reason ? " · 依据：" + esc(pr.reason) : ""}</div>
       <div class="acts">
-        <button class="b primary" data-act="ok">通过</button>
-        <button class="b" data-act="no">驳回</button>
+        ${canReview ? `<button class="b primary" data-act="ok">通过</button><button class="b" data-act="no">驳回</button>` : ""}
         <button class="b" data-act="go">看位置</button>
       </div>
     </div>`;
@@ -2904,6 +2927,10 @@ async function reviewProposal(pid, ok){
       if(pr){ closeQueue(); showProposal(pr); }
       return;
     }
+    if(!canReview){
+      toast("判定需要审核权：输维护者口令，或用邮箱登录");
+      return;
+    }
     if(btn.disabled) return;
     btn.disabled = true;
     reviewProposal(card.dataset.id, act === "ok").finally(()=>{ btn.disabled = false; });
@@ -2947,6 +2974,11 @@ document.getElementById("deskBody").onclick = e => {
       if(act === "go"){
         const pr = queue.find(x => String(x.id) === String(card.dataset.id));
         if(pr){ closeDesk(); showProposal(pr); }
+        return;
+      }
+      if(!canReview){
+        btn.disabled = false;
+        toast("判定需要审核权：输维护者口令，或用邮箱登录");
         return;
       }
       reviewProposal(card.dataset.id, act === "ok")
