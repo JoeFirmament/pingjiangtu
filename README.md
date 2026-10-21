@@ -5,6 +5,7 @@
 原碑刻有 600 余处地名，字迹细密、漫损严重。本项目把碑上可辨认的文字块逐个检测出来，做成可点选的点位，由人判读命名，任何人可提交修订、由维护者审核通过后公开。
 
 线上版：<https://pingjiang-map.app.workbuddy.host/?sharecode=OEGGL35LB5>
+仓库：<https://github.com/JoeFirmament/pingjiangtu>
 
 ---
 
