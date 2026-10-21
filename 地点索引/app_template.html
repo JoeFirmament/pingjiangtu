@@ -469,6 +469,11 @@ body.picking #stage{cursor:crosshair}
 #flagInfo{font-size:10px;color:var(--ink-3)}
 #insp .acts{display:flex;gap:6px;margin-top:8px}
 #insp .acts button{flex:1;font-size:11.5px;padding:5px}
+/* 提交行：一句状态 + 一个动作，和上面的保存拉开一点距离，别混成同一件事 */
+#insp #inspCommit{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);
+  align-items:center;flex-wrap:wrap}
+#insp #inspCommit #icTxt{flex:1 1 100%;font-size:10.5px;color:var(--gold);letter-spacing:.03em}
+#insp #inspCommit #icGo{flex:0 0 auto;padding:5px 10px}
 #help{font-size:10px;color:var(--ink-4);line-height:1.7;margin-top:9px}
 #insp .posrow{display:flex;gap:6px;margin-bottom:6px}
 #insp .posrow input{flex:1;min-width:0;padding:3px 6px;font:11px ui-monospace,monospace}
@@ -821,6 +826,10 @@ body.picking #stage{cursor:crosshair}
     <div class="acts">
       <button class="b primary" id="fOk" title="只保存，留在原地：改动会进左侧「待提交」">保存 ⏎</button>
     </div>
+    <div class="acts" id="inspCommit" style="display:none">
+      <span id="icTxt"></span>
+      <button class="b primary" id="icGo" title="和左下角提交条是同一个动作：写一句依据，进待审队列">提交这处改动 →</button>
+    </div>
     <div id="help">改名：直接改，⏎ 存 ·　⇧⏎ 不是地名　·　⌘Z 撤销</div>
   </div>
   <div id="pickhint">点图上正确的位置 · Esc 取消</div>
@@ -841,6 +850,7 @@ body.picking #stage{cursor:crosshair}
 <b>二、怎么标注</b><br>
 按<b>「标注模式」</b>→ 点红点或虚线框，改名字／类型／备注；拖动改坐标，或按「重新定位」；双击地图空白处可新增。<br>
 已经命名的点，<b>直接点图上那块写着名字的旗标</b>就能改；再点一次光标就落进名称框。<br>
+名字、类型、备注、坐标都能改，改完按面板底部的<b>「提交这处改动」</b>直接进待审，不用再跑去左下角找提交条。<br>
 按<b>「保存 ⏎」只存、不动视野</b>，留在原地；想连着标下一个按<b>「下一个待标点 ›」</b>。<br>
 那个位置根本不是地名（城墙砖、栏杆纹样），按<b>「不是地名」</b>排除。<br>
 面板里的<b>放大镜</b>放大的是碑上原字 —— 照着它写名字。<br><br>
@@ -1498,7 +1508,7 @@ function renderBlocks(){
     el.appendChild(d);
   }
 }
-function refresh(){ syncDirty(); renderStats(); renderList(); renderBlocks(); updateCommitBar(); renderChips(); showAuto(); positionLabels(); }
+function refresh(){ syncDirty(); renderStats(); renderList(); renderBlocks(); updateCommitBar(); renderChips(); showAuto(); positionLabels(); syncInspCommit(byId.get(selId)); }
 
 function select(id, fly){
   selId = id;
@@ -1552,6 +1562,7 @@ function openInsp(p){
   setTitle(p);
   fName.value = p.n || "";
   fType.value = p.t || "其他";
+  fType._picked = false;                          // 每次打开都算「没亲手挑过类型」
   fNote.value = p.note || "";
   const ig = document.getElementById("fIgnore");
   ig.classList.toggle("primary", !!p.ig);
@@ -1561,6 +1572,26 @@ function openInsp(p){
   document.getElementById("posInfo").textContent = p.fx ? "· 待提交" : (p.sub ? "· 已提交，等审核" : "");
   syncFlagPad(p);
   showMag(p);
+  syncInspCommit(p);
+}
+/* 面板底部那行「提交」：改完名字/类型/备注/位置，不用再跑去左下角找提交条。
+   待提交 → 按钮可点；已提交待审 → 变成一句状态。 */
+function syncInspCommit(p){
+  const box = document.getElementById("inspCommit");
+  const btn = document.getElementById("icGo");
+  const txt = document.getElementById("icTxt");
+  if(!box || !btn) return;
+  if(!p || (!p.fx && !p.sub)){ box.style.display = "none"; return; }
+  box.style.display = "flex";
+  if(p.fx){
+    btn.style.display = "";
+    btn.textContent = "提交这处改动 →";
+    btn.disabled = false;
+    if(txt) txt.textContent = "已改动，尚未公开";
+  }else{
+    btn.style.display = "none";
+    if(txt) txt.textContent = "已提交，等审核通过";
+  }
 }
 /* 方位盘的选中态 + 一句人话说明；改方位和改箭头指向是同一件事 */
 function syncFlagPad(p){
@@ -1704,7 +1735,9 @@ function commit(){
   const wasNamed = !!p.n;
   if(snapOwner !== p.id){ pushUndo(snap(p)); snapOwner = p.id; }
   p.n = n;
-  if(n && (!t || t === "其他")){
+  /* 类型：在下拉里亲手挑过，就照挑的来。只有「名字是新写的、类型还停在默认『其他』」
+     才按字面自动推断 —— 否则手动选「其他」会被推断顶回去，等于类型根本改不了。 */
+  if(n && (!t || t === "其他") && !fType._picked){
     const g = inferType(n);
     p.t = g || t;
   }else p.t = t;
@@ -1712,11 +1745,12 @@ function commit(){
   if(p.n && p.src === "auto") p.src = "vision";
   if(p.n && p.ig) delete p.ig;
   fType.value = p.t;
+  fType._picked = false;
   if(wasNamed && p.n && p.src !== "manual") markFixed(p);   // 改的是已有名字 → 记为修正
   paintMarker(p); persist(); refresh(); setTitle(p);
   fX.value = Math.round(p.x); fY.value = Math.round(p.y);
 }
-fName.oninput = commit; fType.onchange = commit; fNote.oninput = commit;
+fName.oninput = commit; fType.onchange = () => { fType._picked = true; commit(); }; fNote.oninput = commit;
 /* 保存＝只存，留在原地、留在编辑模式；想换下一个点用「下一个 ›」 */
 function saveStay(){
   const p = byId.get(selId); if(!p) return;
@@ -1831,6 +1865,8 @@ document.getElementById("btnFlagReset").onclick = () => {
 };
 syncFlagAllBtn();
 document.getElementById("fOk").onclick = () => { saveStay(); };
+/* 面板里的「提交这处改动」＝左下角提交条，同一个动作，只是不用跑过去找 */
+document.getElementById("icGo").onclick = () => { commit(); openCommit(); };
 document.getElementById("fSkip").onclick = () => { commit(); nextUnnamed(); };
 document.getElementById("fIgnore").onclick = () => {
   const p = byId.get(selId); if(!p) return;
@@ -2890,6 +2926,8 @@ window.addEventListener("keydown", e => {
         p.y = Math.max(0, Math.min(IH, p.y + dy));
         markFixed(p);
         const m = markerOf(p.id); if(m) place(m, p);
+        positionLabels();                        // 旗标要跟着走，否则微调后看着「没动」
+        syncInspCommit(p);
         fX.value = Math.round(p.x); fY.value = Math.round(p.y);
         document.getElementById("posInfo").textContent = "· 已修正";
         document.getElementById("inspTitle").querySelector("span").textContent =
