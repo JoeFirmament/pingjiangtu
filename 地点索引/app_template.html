@@ -400,6 +400,33 @@ body.picking #stage{cursor:crosshair}
   background:var(--ink);color:#fbfaf5;font-size:11.5px;padding:6px 14px;border-radius:2px;
   pointer-events:none;letter-spacing:.03em;
 }
+/* ═══ 待审预览 ═══
+   点「看位置」时把还没通过的提案画在图上：靛青旗标写提案里的名字，靛青环圈住提案坐标，
+   顶部一条卡片写清 旧名→新名 与提交人，并直接给出 通过 / 驳回。
+   用靛青而不是朱砂：朱砂是「已认定」的颜色，未审的东西不能抢这个色。 */
+#pvbar{
+  position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:7;display:none;
+  width:min(520px,calc(100% - 28px));
+  background:rgba(251,250,245,.975);border:1px solid rgba(215,210,194,.95);border-radius:2px;
+  padding:10px 13px 11px;box-shadow:0 2px 16px rgba(43,41,38,.10);
+  font-size:11.5px;color:var(--ink-2);line-height:1.75;
+}
+#pvbar.on{display:block}
+#pvbar .pvh{display:flex;gap:8px;align-items:baseline;margin-bottom:4px}
+#pvbar .pvh b{font-weight:500;color:var(--blue);letter-spacing:.04em}
+#pvbar .pvh span{font-size:10px;color:var(--ink-4);margin-left:auto}
+#pvbar .pvd s{color:var(--ink-4)}
+#pvbar .pvd em{font-style:normal;color:var(--ink);font-weight:500}
+#pvbar .pva{display:flex;gap:6px;margin-top:8px;align-items:center}
+#pvbar .pva .b{font-size:11.5px;padding:4px 13px}
+#pvbar .pvn{font-size:10px;color:var(--ink-4)}
+#labels .lb.pv{background:var(--blue);color:#f7fbfc;box-shadow:0 0 0 1px rgba(251,250,245,.95)}
+#world .mk.pv{
+  width:17px;height:17px;margin:-8.5px 0 0 -8.5px;
+  background:transparent;border:2px solid var(--blue);border-radius:50%;
+  box-shadow:0 0 0 1px rgba(251,250,245,.9),0 0 0 3px rgba(91,125,140,.18);
+  transform:scale(var(--inv,1));transform-origin:center;pointer-events:none;
+}
 #hud{position:absolute;right:16px;top:16px;display:flex;flex-direction:column;gap:6px;z-index:5}
 #hud button{
   width:30px;height:30px;border:1px solid rgba(215,210,194,.85);border-radius:2px;cursor:pointer;
@@ -672,6 +699,8 @@ body.picking #stage{cursor:crosshair}
     background:rgba(251,250,245,.94);border:1px solid var(--line-2);border-radius:2px;
     transition:border-color .12s,background .12s;
   }
+  /* 窄屏顶部被目录键和搜索条占了，待审预览卡片往下让一行 */
+  #pvbar{top:56px;width:calc(100% - 24px)}
   #mSearch:focus-within{border-color:var(--ink-3);background:#fff}
   #mSearch input{
     flex:1;min-width:0;height:100%;padding:0 4px 0 10px;border:0;outline:none;background:none;
@@ -771,6 +800,16 @@ body.picking #stage{cursor:crosshair}
     <button class="mclr" id="q2clear" aria-label="清空搜索">×</button>
   </div>
   <div id="q2hit"></div>
+  <div id="pvbar">
+    <div class="pvh"><b id="pvTitle">待审预览</b><span id="pvMeta"></span></div>
+    <div class="pvd" id="pvDesc"></div>
+    <div class="pva">
+      <button class="b primary" id="pvOk">通过</button>
+      <button class="b" id="pvNo">驳回</button>
+      <span class="pvn" id="pvNote"></span>
+      <button class="b" id="pvClose" style="margin-left:auto">关闭 · Esc</button>
+    </div>
+  </div>
   <div id="scrim"></div>
   <div id="hud">
     <button id="zin">＋</button>
@@ -858,6 +897,8 @@ body.picking #stage{cursor:crosshair}
 改过的地方会自动套<b>金环</b>、左侧列表挂<b>「待提交」</b>小签，左下角出现「有 N 处改动待提交」。<br>
 按<b>「提交审核」</b>并附一句依据（例：碑上作「和豐坊」，横排右起读），改动进入公开待审队列，<b>提交不需要登录</b>。<br>
 审核人在<b>「工作台 → 待审批」</b>里逐条对比旧值／新值，<b>通过</b>即写进公开数据，所有人刷新可见；<b>驳回</b>则原文不动。<br>
+拿不准的按<b>「看位置」</b>：图上会用<b>靛青</b>画出这条待审的标注（靛青旗标＝提案里的名字，靛青环＝提案坐标），
+顶部卡片上直接点<b>通过 / 驳回</b>，按 Esc 收起。<br>
 <b>「工作台」</b>四个标签：我的标注（我改了什么）、待审批（等审核的）、已通过、已驳回。<br>
 <b>想当审核人</b>：在待审弹层里输<b>维护者口令</b>即可（不发邮件，直接进审核），或走「用邮箱」收验证码再输授权码开通。</div>
     <div style="font-size:11px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:10px">
@@ -1207,8 +1248,7 @@ function positionLabels(){
       labelsShown = false;
     }
     return;
-  }
-  labelsShown = true;
+  }  labelsShown = true;
   const r = stage.getBoundingClientRect();
   const W = r.width, H = r.height;
   /* 15px 起按 0.58 次方缓升，封顶 25px。有朱砂底之后视觉重量比纯字大，
@@ -1218,6 +1258,7 @@ function positionLabels(){
   const off = fs * .72;          // 箭头 0.5em + 约 0.2em 空白，箭尖不戳进碑刻笔画
   const k = fs / 16;
   for(const el of labelLayer.children){
+    if(el.classList.contains("pv")) continue;      // 待审预览旗标自己摆，不参与点位循环
     const p = byId.get(el.dataset.id);
     if(!p || !p.n || p.ig){
       if(el.style.display !== "none") el.style.display = "none";
@@ -1272,6 +1313,109 @@ function positionLabels(){
     if(el.dataset.d !== d) el.dataset.d = d;
     el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
   }
+  positionPreview();                               // 待审预览跟在同一套坐标系里
+}
+
+/* ═══ 待审预览 ═══
+   以前「看位置」只是把地图移过去就完事 —— 图上什么都没有：还没通过的名字不会出现在
+   places 里，未命名的检测框又要开「候选框」才显示，于是看着像空跑一趟。
+   现在把提案本身画上去：靛青旗标写提案名、靛青环圈住提案坐标、顶部一条卡片写清改动，
+   卡片上就能直接通过/驳回。 */
+let previewPr = null;
+let pvLabel = null;                                // 靛青旗标（住在 #labels，但不在 labelMap）
+let pvMark = null;                                 // 靛青环（住在 #world，随图缩放）
+function ensurePvEls(){
+  if(!pvLabel){
+    pvLabel = document.createElement("i");
+    pvLabel.className = "lb pv";
+    const t = document.createElement("span"); t.className = "t";
+    const tip = document.createElement("b"); tip.className = "tip";
+    pvLabel.appendChild(t); pvLabel.appendChild(tip);
+    pvLabel.style.display = "none";
+    labelLayer.appendChild(pvLabel);
+  }
+  if(!pvMark){
+    pvMark = document.createElement("i");
+    pvMark.className = "mk pv";
+    pvMark.style.display = "none";
+    world.appendChild(pvMark);
+  }
+}
+function positionPreview(){
+  if(!previewPr) return;
+  const x = +previewPr.x, y = +previewPr.y;
+  if(!isFinite(x) || !isFinite(y)) return;
+  const sx = tx + x * s, sy = ty + y * s;
+  if(pvMark){
+    pvMark.style.display = "block";
+    pvMark.style.left = x + "px";
+    pvMark.style.top = y + "px";
+  }
+  if(!pvLabel) return;
+  const fs = Math.round(Math.min(25, Math.max(15, 15 * Math.pow(s, 0.58))) * 2) / 2;
+  if(pvLabel._fs !== fs){ pvLabel.style.fontSize = fs + "px"; pvLabel._fs = fs; }
+  pvLabel.style.display = "block";
+  const w = pvLabel.offsetWidth || 90, h = pvLabel.offsetHeight || 26;
+  const off = fs * .72;
+  const r = stage.getBoundingClientRect(), W = r.width, H = r.height;
+  let d = "n", pos = flagPlace("n", sx, sy, w, h, off);
+  for(const c of ["n", "s", "e", "w"]){
+    const q = flagPlace(c, sx, sy, w, h, off);
+    if(q[0] > 4 && q[1] > 4 && q[0] + w < W - 4 && q[1] + h < H - 4){ d = c; pos = q; break; }
+  }
+  if(pvLabel.dataset.d !== d) pvLabel.dataset.d = d;
+  pvLabel.style.transform = `translate(${pos[0].toFixed(1)}px,${pos[1].toFixed(1)}px)`;
+}
+function showProposal(pr){
+  if(!pr) return;
+  previewPr = pr;
+  ensurePvEls();
+  const t = pvLabel.querySelector(".t");
+  if(t) t.textContent = (+pr.ig === 1) ? "不是地名" : (pr.n || "（未填名）");
+  pvLabel._fs = null;                              // 文字变了要重量尺寸
+  renderPvBar(pr);
+  document.getElementById("pvbar").classList.add("on");
+  const x = +pr.x, y = +pr.y;
+  if(isFinite(x) && isFinite(y)) centerOn(x, y, Math.max(s, 0.95));
+  positionPreview();
+}
+function hidePreview(){
+  previewPr = null;
+  if(pvLabel) pvLabel.style.display = "none";
+  if(pvMark) pvMark.style.display = "none";
+  const b = document.getElementById("pvbar");
+  if(b) b.classList.remove("on");
+}
+function renderPvBar(pr){
+  const title = document.getElementById("pvTitle");
+  const meta = document.getElementById("pvMeta");
+  const desc = document.getElementById("pvDesc");
+  const ok = document.getElementById("pvOk");
+  const no = document.getElementById("pvNo");
+  const note = document.getElementById("pvNote");
+  if(!title) return;
+  const isIg = +pr.ig === 1;
+  title.textContent = "待审 · #" + pr.id;
+  meta.textContent = (pr.author || "匿名") + " · " + fmtTime(pr.created_at);
+  const parts = [];
+  if(isIg) parts.push("标为「不是地名」");
+  else if((pr.before_n || "") !== (pr.n || ""))
+    parts.push(`名字 <s>${esc(pr.before_n || "空")}</s> → <em>${esc(pr.n || "空")}</em>`);
+  if(pr.t) parts.push("类型 " + esc(pr.t));
+  if(pr.x != null && (pr.before_x !== pr.x || pr.before_y !== pr.y))
+    parts.push(`位置 → ${Math.round(pr.x)},${Math.round(pr.y)}`);
+  if(pr.note) parts.push("备注：" + esc(pr.note));
+  if(pr.reason) parts.push("依据：" + esc(pr.reason));
+  desc.innerHTML = parts.join("　·　") || "（无说明）";
+  ok.style.display = canReview ? "" : "none";
+  no.style.display = canReview ? "" : "none";
+  note.textContent = canReview ? "" : "判定需审核登录（⋯ → 待审 → 维护者口令）";
+}
+function decidePreview(ok){
+  if(!previewPr) return;
+  if(!canReview){ toast("判定需要审核登录：⋯ → 待审 → 维护者口令"); return; }
+  const id = previewPr.id;
+  reviewProposal(id, ok).then(() => { hidePreview(); loadQueue(); paintDesk(); });
 }
 
 function buildMarkers(){
@@ -1512,6 +1656,7 @@ function refresh(){ syncDirty(); renderStats(); renderList(); renderBlocks(); up
 
 function select(id, fly){
   selId = id;
+  if(previewPr && String(previewPr.place_id) !== String(id)) hidePreview();   // 换看别的点就收起待审预览
   world.querySelectorAll(".mk.sel").forEach(m=>m.classList.remove("sel"));
   labelLayer.querySelectorAll(".lb.sel").forEach(l=>l.classList.remove("sel"));
   const p = byId.get(id);
@@ -1867,6 +2012,10 @@ syncFlagAllBtn();
 document.getElementById("fOk").onclick = () => { saveStay(); };
 /* 面板里的「提交这处改动」＝左下角提交条，同一个动作，只是不用跑过去找 */
 document.getElementById("icGo").onclick = () => { commit(); openCommit(); };
+/* 待审预览卡片上的三个动作 */
+document.getElementById("pvClose").onclick = hidePreview;
+document.getElementById("pvOk").onclick = () => decidePreview(true);
+document.getElementById("pvNo").onclick = () => decidePreview(false);
 document.getElementById("fSkip").onclick = () => { commit(); nextUnnamed(); };
 document.getElementById("fIgnore").onclick = () => {
   const p = byId.get(selId); if(!p) return;
@@ -2773,7 +2922,7 @@ async function reviewProposal(pid, ok){
     const act = btn.dataset.act;
     if(act === "go"){
       const pr = queue.find(x => String(x.id) === String(card.dataset.id));
-      if(pr){ closeQueue(); centerOn(+pr.x || 2000, +pr.y || 3300, Math.max(s, 0.95)); }
+      if(pr){ closeQueue(); showProposal(pr); }
       return;
     }
     if(btn.disabled) return;
@@ -2818,7 +2967,7 @@ document.getElementById("deskBody").onclick = e => {
       const act = btn.dataset.act;
       if(act === "go"){
         const pr = queue.find(x => String(x.id) === String(card.dataset.id));
-        if(pr){ closeDesk(); centerOn(+pr.x || 2000, +pr.y || 3300, Math.max(s, 0.95)); }
+        if(pr){ closeDesk(); showProposal(pr); }
         return;
       }
       reviewProposal(card.dataset.id, act === "ok")
@@ -2909,6 +3058,7 @@ window.addEventListener("keydown", e => {
   }
   if(e.key === "Escape"){
     if(picking){ stopPick(); return; }
+    if(previewPr){ hidePreview(); return; }
     if(insp.style.display === "block") closeInsp();
   }
   {  // 方向键微调红点：1px / ⇧10px
