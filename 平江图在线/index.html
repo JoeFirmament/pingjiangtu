@@ -976,7 +976,7 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
       快捷键：<b>/</b> 聚焦搜索　·　<b>⌘Z</b> 撤销　·　<b>⌘S</b> 导出　·　方向键微调红点　·　右上角 <b>◐</b> 反色（夜里看）
     </div>
     <div id="verline">
-      平江图地名库 <b>v1.0.7</b>　·　构建 2026-10-22 13:43　·　<span id="verCnt">点位 —</span>
+      平江图地名库 <b>v1.0.8</b>　·　构建 2026-10-22 14:14　·　<span id="verCnt">点位 —</span>
     </div>
     <div class="mnt">
       <span>本机数据（一般用不到）</span>
@@ -1058,6 +1058,21 @@ const IW = 4414, IH = 7064;
 const TYPES = ["城门","桥梁","衙署","寺观","园林","塔","街巷","河道","坊","其他"];
 const LS = "pjmap.places.v2";
 const BASE = new Map(SEED.map(s => [s.id, s]));   // 基线：用来算「待提交」和「原来是什么」
+/* 基线不能只有内嵌 SEED：SEED 是打包时那一版，云端之后通过的每一个点都不在里面。
+   只看 SEED 的话，那些点会被判成「本地新增」→ 一刷新就冒出「待提交』——
+   这就是「已经提交过的内容又回来」的真正原因。所以把云端基线缓存一份到本机，
+   并在拿到云端数据之前不裁决谁脏谁不脏。 */
+const LS_BASE = "pjmap.base.v1";
+try{
+  const saved = JSON.parse(localStorage.getItem(LS_BASE) || "[]");
+  for(const r of saved) if(r && r.id) BASE.set(r.id, r);
+}catch(e){}
+let baseReady = false;                            // 云端基线拉回来之前，syncDirty 一律不动手
+function saveBase(){
+  try{
+    localStorage.setItem(LS_BASE, JSON.stringify([...BASE.values()]));
+  }catch(e){}
+}
 
 let places = [];
 let byId = new Map();
@@ -1296,6 +1311,9 @@ async function syncMySubs(silent){
 /* 本地改动是否还没提交：和出厂基线比，名字 / 类型 / 备注 / 位置 / 非地名 / 新增都算 */
 function isDirty(p){
   if(p.sub) return false;                          // 已经提交、在等审核
+  /* 基线还没拉回来时，云端新增的那些点在 BASE 里找不到 —— 会被一律当成「本地新增」。
+     这时只信本地存着的 fx，别凭半个基线给人扣帽子。 */
+  if(!baseReady) return !!p.fx;
   const b = BASE.get(p.id);
   if(!b) return true;                              // 本地新增的点位
   if((p.n || "") !== (b.n || "")) return true;
@@ -1307,6 +1325,7 @@ function isDirty(p){
   return false;
 }
 function syncDirty(){
+  if(!baseReady) return;                            // 基线还没齐：判谁「待提交」必然误伤
   let hit = false;
   for(const p of places){
     const d = isDirty(p), had = !!p.fx;
@@ -2532,6 +2551,10 @@ async function pullApproved(quiet){
     from += 1000;
   }
   const n = applyApproved(rows);
+  baseReady = true;                                  // 基线齐了，之后才允许判「待提交」
+  saveBase();
+  syncDirty();                                       // 自愈：老版本误标的 fx 在这里被清掉
+  refresh();
   if(quiet && n) toast(`已同步 ${n} 处审校结果`);
   return true;
 }
@@ -2540,7 +2563,18 @@ function applyApproved(rows){
   for(const r of rows){
     if(!r || !r.id) continue;
     let p = byId.get(r.id);
-    if(p && p.fx) continue;                            // 本地未提交的改动优先
+    /* 本地未提交的改动优先；但如果本地内容与云端一模一样，这个 fx 就是误判
+       （旧版本在基线还没拉回来时按「新增点位」算脏），要就地清掉，否则它会永久挂着。 */
+    if(p && p.fx){
+      const same = (p.n || "") === (r.n || "") &&
+                   Math.abs((+p.x || 0) - (+r.x || 0)) < 1.5 &&
+                   Math.abs((+p.y || 0) - (+r.y || 0)) < 1.5 &&
+                   (p.t || "") === (r.t || "") &&
+                   (p.note || "") === (r.note || "") &&
+                   (!!+r.ig === !!p.ig);
+      if(!same) continue;
+      delete p.fx;
+    }
     if(p && p.sub){                                    // 刚提交、等审核中：云端还没追上就保留本地
       const same = (r.n || "") === (p.n || "") &&
                    isFinite(+r.x) && Math.abs(+r.x - p.x) < 3 && Math.abs(+r.y - p.y) < 3;
