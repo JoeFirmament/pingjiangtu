@@ -246,6 +246,12 @@ body::before{                                  /* 纸的极淡纤维 */
 }
 .row .pen{color:#7d5f1c;background:#f8f1dd;border:1px solid #e6d5a6}
 .row .sub{color:#4f6b78;background:#eef3f5;border:1px solid #cfdbe1}
+/* 被驳回：换成朱砂，和「还没交」的赭金分开 —— 这条不是忘了交，是被打回来了 */
+.row .pen.rej{color:var(--cinnabar);background:#fdf3f0;border:1px solid #dcb9b2}
+html.night .row.dirty{background:#221c14}
+html.night .row .pen{color:#c9a457;background:#2a2317;border-color:#453a22}
+html.night .row .sub{color:#8fb0bd;background:#1d262a;border-color:#2f4249}
+html.night .row .pen.rej{color:#d76a5c;background:#2a1a17;border-color:#4a2a26}
 .hint{padding:11px 18px;font-size:11px;color:var(--ink-3);line-height:1.8}
 .hint.lgh{
   padding:7px 18px 5px;font-size:9.5px;letter-spacing:.08em;color:var(--ink-4);
@@ -665,6 +671,17 @@ body.picking #stage{cursor:crosshair}
 #cmList li b{font-family:var(--serif);letter-spacing:.04em;font-weight:500;color:var(--ink)}
 #cmList .cid{font:9.5px ui-monospace,monospace;color:var(--ink-4);margin-left:8px}
 #cmList .more{color:var(--ink-4);border-left-color:var(--line-2);background:none}
+/* 每条改动后面的「去改」：小、贴右，不抢标题的字 */
+.b.mini{
+  float:right;font-size:10.5px;padding:1px 8px;margin-left:8px;line-height:1.6;
+  border:1px solid var(--line-2);border-radius:2px;background:var(--paper-2);color:var(--ink-2);
+  cursor:pointer;font-family:inherit;
+}
+.b.mini:hover{border-color:var(--ink-3);color:var(--ink)}
+#cmList .rejline{color:var(--cinnabar);font-size:11px}
+html.night #cmList li{background:#1e1b15}
+html.night #cmMsg{background:#12100a}
+html.night #cmList .rejline{color:#d76a5c}
 .cml{display:block;font-size:10.5px;color:var(--ink-3);margin:0 0 4px;letter-spacing:.03em}
 #cmMsg{
   width:100%;min-height:66px;font:12.5px/1.75 "PingFang SC",sans-serif;padding:8px 10px;
@@ -970,6 +987,8 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
 改过的地方会自动套<b>金环</b>、左侧列表挂<b>「待提交」</b>小签，左下角出现「有 N 处改动待提交」。<br>
 按<b>「提交审核」</b>并附一句依据（例：碑上作「和豐坊」，横排右起读），改动进入公开待审队列，<b>提交不需要登录</b>。<br>
 审核人在<b>「工作台 → 待审批」</b>里逐条对比旧值／新值，<b>通过</b>即写进公开数据，所有人刷新可见；<b>驳回</b>则原文不动。<br>
+被驳回的条目会回到「未提交」并挂<b>朱砂「被驳回」</b>小签：在工作台点那一行，或点提交弹层里每条的<b>「去改」</b>，
+就直接跳到图上的这一点，改完再交一次即可。<br>
 拿不准的按<b>「看位置」</b>：图上会用<b>靛青</b>画出这条待审的标注（靛青旗标＝提案里的名字，靛青环＝提案坐标），
 顶部卡片上直接点<b>通过 / 驳回</b>，按 Esc 收起。<br>
 <b>「工作台」</b>四个标签：我的标注（我改了什么）、待审批（等审核的）、已通过、已驳回。<br>
@@ -1235,6 +1254,23 @@ function updateCommitBar(){
    审核动作发生在别人（或另一台设备）的浏览器里，本地只看得到自己留下的 sub 标记。
    所以：拿本地 sub 的点去 proposals 里查一次，approved 就应用结果并清标记，
    rejected 就清标记并说一句，别让「等审核」永远挂着。 */
+/* 被驳回的记录：驳回后原文并没有变，本地那份「我的改动」还留着，
+   于是它会重新回到「待提交」。光回到待提交没用 —— 得能看出「这条被驳过」，
+   并且能一键跳过去改，否则用户只会看到一条改过的点，不知道为什么要改。 */
+const LS_REJ = "pjmap.rej";
+let REJ = {};
+try{ REJ = JSON.parse(localStorage.getItem(LS_REJ) || "{}") || {}; }catch(e){ REJ = {}; }
+function saveRej(){ try{ localStorage.setItem(LS_REJ, JSON.stringify(REJ)); }catch(e){} }
+function rejMark(id, info){ REJ[id] = info || {}; saveRej(); }
+function rejClear(id){ if(REJ[id]){ delete REJ[id]; saveRej(); } }
+/* 本机刚驳回一条：清掉「等审核」的蓝标，记下谁驳的 ——
+   列表里这条就会显示「被驳回」而不是「待提交」，并且能点进图里改。 */
+function markRejectedLocal(pr, who){
+  const p = pr && byId.get(pr.place_id);
+  if(p && p.sub){ delete p.sub; paintMarker(p); }
+  if(pr) rejMark(pr.place_id, { rv: who || "审核人", at: new Date().toISOString(), why: pr.reason || "" });
+  persist(); refresh();
+}
 let lastSyncAt = 0;
 async function syncMySubs(silent){
   if(!cloud) return 0;
@@ -1242,7 +1278,7 @@ async function syncMySubs(silent){
   if(!mine.length) return 0;
   const ids = mine.map(p => p.id);
   const { data, error } = await cloud.database.from("proposals")
-    .select("id,place_id,n,t,x,y,note,ig,status,reviewed_at")
+    .select("id,place_id,n,t,x,y,note,ig,status,reviewed_at,reviewer,reason")
     .in("place_id", ids.slice(0, 200))
     .order("reviewed_at", { ascending: false });
   if(error){ if(!silent) toast("同步失败：" + cloudErr(error)); return 0; }
@@ -1253,6 +1289,7 @@ async function syncMySubs(silent){
     if(!p || !p.sub) continue;
     delete p.sub;
     if(pr.status === "approved"){
+      rejClear(p.id);
       if(pr.n != null) p.n = pr.n || "";
       if(pr.t) p.t = pr.t;
       if(pr.x != null) p.x = +pr.x;
@@ -1264,12 +1301,13 @@ async function syncMySubs(silent){
       done++;
     }else{
       rejected++;                                    // 驳回：原文不动，只把标记拿掉
+      rejMark(p.id, { rv: pr.reviewer || "审核人", at: pr.reviewed_at || "", why: pr.reason || "" });
     }
     paintMarker(p);
   }
   if(done || rejected){
     persist(); refresh();
-    if(!silent) toast(`同步完成：${done ? done + " 处已通过" : ""}${done && rejected ? "、" : ""}${rejected ? rejected + " 处被驳回" : ""}`);
+    if(!silent) toast(`同步完成：${done ? done + " 处已通过" : ""}${done && rejected ? "、" : ""}${rejected ? rejected + " 处被驳回（可改完再交）" : ""}`);
   }else if(!silent){
     toast("已经问过云端：还有 " + mine.length + " 处在等审核");
   }
@@ -1685,12 +1723,16 @@ function renderList(){
     }
     const r = document.createElement("div");
     const dirty = isD(p);
+    const rj = REJ[p.id];
     r.className = "row" + (p.ig ? " ig" : "") + (dirty ? " dirty" : "") +
                   (p.id === selId ? " sel" : "");
     r.dataset.id = p.id;
     r.innerHTML = `<span class="nm${p.n?"":" empty"}">${p.n || (p.ig ? "不是地名" : "待命名")}</span>` +
       (p.t ? `<span class="tg">${p.t}</span>` : "") +
-      (dirty ? `<span class="pen">待提交</span>` : (p.sub ? `<span class="sub">待审</span>` : "")) +
+      (dirty ? (rj
+          ? `<span class="pen rej" title="被 ${esc(rj.rv)} 驳回${rj.why ? "：" + esc(rj.why) : ""}　改完可再提交">被驳回</span>`
+          : `<span class="pen">待提交</span>`)
+        : (p.sub ? `<span class="sub">待审</span>` : "")) +
       `<span class="id">${p.id}</span>`;
     r.onclick = () => select(p.id, true);
     listEl.appendChild(r);
@@ -2396,6 +2438,11 @@ document.getElementById("btnName").onclick = askName;
     box.classList.remove("on");
     submitEdits(m);
   };
+  const list = document.getElementById("cmList");
+  if(list) list.onclick = e => {
+    const b = e.target.closest("[data-go]");
+    if(b) gotoEdit(b.dataset.go);
+  };
 })();
 (function drawer(){
   const btn = document.getElementById("menubtn"), scrim = document.getElementById("scrim");
@@ -2562,13 +2609,36 @@ function openCommit(){
   if(!arr.length){ toast("你还没有改动任何点位"); return; }
   if(!cloud){ exportFixFile(arr); return; }
   document.getElementById("cmCount").textContent = arr.length + " 处";
-  document.getElementById("cmList").innerHTML = arr.slice(0, 12).map(p =>
-    `<li><b>${esc(p.n || p.id)}</b><span class="cid">${esc(p.id)}</span><br>${changeSummary(p)}</li>`
-  ).join("") + (arr.length > 12 ? `<li class="more">还有 ${arr.length - 12} 处…</li>` : "");
+  /* 每条都带一个「去改」：被驳回的那条，人在这儿就停住了 —— 得让他回到图上改，
+     而不是再点一次「提交审核」把同样的内容又交一遍。 */
+  document.getElementById("cmList").innerHTML = arr.slice(0, 12).map(p => {
+    const rj = REJ[p.id];
+    return `<li><b>${esc(p.n || p.id)}</b><span class="cid">${esc(p.id)}</span>` +
+      `<button class="b mini" data-go="${esc(p.id)}" title="关掉这里，跳到图上去改这一点">去改</button>` +
+      `<br>${changeSummary(p)}` +
+      (rj ? `<br><span class="rejline">上次被 ${esc(rj.rv)} 驳回${rj.why ? "：" + esc(rj.why) : ""}　改完再交一次</span>` : "") +
+      `</li>`;
+  }).join("") + (arr.length > 12 ? `<li class="more">还有 ${arr.length - 12} 处…</li>` : "");
   document.getElementById("cmMsg").value = "";
   paintWho();
   document.getElementById("commitbox").classList.add("on");
   setTimeout(() => { const m = document.getElementById("cmMsg"); if(m) m.focus(); }, 60);
+}
+/* 从任何列表/弹层跳回图上改这一点：关闭浮层 → 进标注模式 → 飞过去 → 光标落进名称框 */
+function gotoEdit(id){
+  const p = byId.get(id);
+  if(!p){ toast("这一点不在地图上（可能已被删除）"); return; }
+  for(const k of ["commitbox", "desk", "queue"]) {
+    const el = document.getElementById(k);
+    if(el) el.classList.remove("on");
+  }
+  hidePreview();
+  document.body.classList.add("editing");
+  stage.classList.add("edit");
+  setEditBtn(true);
+  select(id, true);
+  flyTo(p.x, p.y, Math.max(s, 1.15));
+  setTimeout(() => { fName.focus(); fName.select(); }, 140);
 }
 async function submitEdits(reason){
   const arr = places.filter(p => p.fx);
@@ -2591,7 +2661,7 @@ async function submitEdits(reason){
   const ins = await cloud.database.from("proposals").insert(rows).select("id");
   if(ins.error){ toast("提交失败：" + cloudErr(ins.error)); return; }
   rememberSub((ins.data || []).map(r => r.id));
-  for(const p of arr){ p.fx = 0; p.sub = 1; paintMarker(p); }
+  for(const p of arr){ p.fx = 0; p.sub = 1; rejClear(p.id); paintMarker(p); }   // 重新交了，旧的驳回记录该退场
   persist(); refresh(); renderWho();
   toast(`已提交 ${rows.length} 条，审核通过后所有人可见`);
   loadQueue();
@@ -2775,8 +2845,10 @@ function paintDesk(){
     body.innerHTML =
       (dirty.length ? `<div class="sect">未提交 · ${dirty.length} 处</div>` +
         dirty.slice(0, 80).map(p => deskRow({
-          n:p.n, id:p.id, st:"dirty", stLabel:"待提交",
-          ds:changeSummary(p)
+          n:p.n, id:p.id,
+          st: REJ[p.id] ? "no" : "dirty",
+          stLabel: REJ[p.id] ? "被驳回" : "待提交",
+          ds: changeSummary(p) + (REJ[p.id] ? "　·　被 " + REJ[p.id].rv + " 驳回，改完再交" : "")
         })).join("") : "") +
       (sub.length ? `<div class="sect">已提交 · 等审核 · ${sub.length} 处</div>` +
         sub.slice(0, 80).map(p => deskRow({
@@ -2818,12 +2890,15 @@ function paintDesk(){
       ${deskTab === "done" ? "通过后的修订会记在这里，方便回看是谁改的。" : "被驳回的修订会记在这里，可以看看审核人的意见。"}</div>`;
     return;
   }
-  body.innerHTML = mineRows.filter(r => r.status === deskTab).map(r => deskRow({
-    n:r.n, id:r.place_id,
-    st:deskTab === "done" ? "ok" : "no",
-    stLabel:deskTab === "done" ? "已通过" : "已驳回",
-    ds:(r.reviewer ? "审核：" + r.reviewer + "　" : "") + fmtTime(r.reviewed_at)
-  })).join("");
+  body.innerHTML = (deskTab === "rej"
+      ? `<div class="sect">点任意一行 → 跳到图上去改，改完再提交一次</div>` : "") +
+    mineRows.filter(r => r.status === deskTab).map(r => deskRow({
+      n:r.n, id:r.place_id,
+      st:deskTab === "done" ? "ok" : "no",
+      stLabel:deskTab === "done" ? "已通过" : "已驳回",
+      ds:(r.reviewer ? "审核：" + r.reviewer + "　" : "") + fmtTime(r.reviewed_at) +
+         (deskTab === "rej" && REJ[r.place_id] ? "　·　本地已留着你改的内容，可改了再交" : "")
+    })).join("");
 }
 let mineRows = [];                 // 我提交过的提案及其审批结果
 async function loadMine(){
@@ -2977,6 +3052,7 @@ async function reviewProposal(pid, ok){
       toast("已通过，所有人下次打开就能看到");
     }else{
       toast("已驳回");
+      markRejectedLocal(pr, (myUser && (myUser.name || myUser.email)) || "维护者");
     }
     queue = queue.filter(x => String(x.id) !== String(pid));
     paintQueue(); persist(); refresh(); renderWho();
@@ -3021,6 +3097,7 @@ async function reviewProposal(pid, ok){
     if(r2.error){ toast("驳回失败：" + cloudErr(r2.error)); return; }
     if(!r2.data || !r2.data.length){ authMsg("没有权限 —— 需要审核权", 1); return; }
     toast("已驳回");
+    markRejectedLocal(pr, label);
   }
   queue = queue.filter(x => String(x.id) !== String(pid));
   paintQueue(); persist(); refresh(); renderWho();
