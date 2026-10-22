@@ -9,6 +9,10 @@
 <meta property="og:description" content="在 1229 年的苏州城图上，逐字核校每一处地名：桥、门、寺观、坊巷、河道。">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#fbfaf5">
+<script>
+/* 反色偏好要在首帧之前挂到 <html> 上：放到页尾再切会先亮一下再变暗 */
+try{ if(localStorage.getItem("pjmap.night") === "1") document.documentElement.classList.add("night"); }catch(e){}
+</script>
 <style>
 /* ═══════════ 设计变量：素纸 · 墨 · 一点朱 ═══════════ */
 :root{
@@ -19,6 +23,7 @@
   --paper-2:#ffffff;
   /* 墨 */
   --ink:#2b2926;
+  --ink-hover:#1e1d1a;        /* 墨底按钮的悬停：比墨再深一档，夜里要反过来变浅 */
   --ink-2:#6d685d;
   --ink-3:#96907f;
   --ink-4:#b6b0a1;
@@ -113,7 +118,7 @@ body::before{                                  /* 纸的极淡纤维 */
   transition:color .12s,border-color .12s,background .12s;
 }
 .chip:hover{border-color:var(--ink-4);color:var(--ink-2)}
-.chip.on{background:var(--ink);border-color:var(--ink);color:#fbfaf5}
+.chip.on{background:var(--ink);border-color:var(--ink);color:var(--paper-1)}
 /* 状态类不跟着走墨黑：待审＝靛青、待提交＝赭金，与图上的蓝环／金环同色系。
    墨黑是「已确认的动作」，拿它标注「还在等」会看成像报错或像已完成。 */
 .chip.on[data-k="待审"]{background:var(--blue);border-color:var(--blue)}
@@ -271,9 +276,9 @@ button.b{
 button.b:hover{border-color:var(--ink-3);color:var(--ink);background:rgba(43,41,38,.035)}
 button.b:active{background:rgba(43,41,38,.07)}
 button.b.primary{
-  background:var(--ink);border-color:var(--ink);color:#fbfaf5;letter-spacing:.05em;
+  background:var(--ink);border-color:var(--ink);color:var(--paper-1);letter-spacing:.05em;
 }
-button.b.primary:hover{background:#1e1d1a;border-color:#1e1d1a;color:#fff}
+button.b.primary:hover{background:var(--ink-hover);border-color:var(--ink-hover);color:var(--paper-1)}
 button.b.primary.off{background:transparent;color:var(--cinnabar);border-color:#dcb9b2}
 /* 唯一保留的朱：提交动作 */
 #commitbar #cbGo{background:var(--cinnabar);border-color:var(--cinnabar);color:#fdf8ee}
@@ -283,7 +288,7 @@ button.b.primary.off{background:transparent;color:var(--cinnabar);border-color:#
 #btnAuto{flex:0 0 auto}
 #btnMore{flex:0 0 auto;padding:7px 9px}
 #btnDesk.alert{background:#faf8f1;border-color:var(--line-2);color:var(--ink-2)}
-#btnAuto.on{background:var(--ink);border-color:var(--ink);color:#fbfaf5}
+#btnAuto.on{background:var(--ink);border-color:var(--ink);color:var(--paper-1)}
 #moremenu{
   display:none;position:absolute;left:14px;right:14px;bottom:58px;z-index:60;
   grid-template-columns:1fr 1fr;gap:6px;padding:10px;border:1px solid var(--line-2);border-radius:2px;
@@ -293,7 +298,7 @@ button.b.primary.off{background:transparent;color:var(--cinnabar);border-color:#
 #moremenu .b{font-size:11.5px;padding:7px 9px;text-align:left}
 #moremenu #btnHelp{grid-column:1/-1;text-align:center}
 #qnum{color:var(--cinnabar);font-weight:500}
-#moremenu .b.on{background:var(--ink);border-color:var(--ink);color:#fbfaf5}
+#moremenu .b.on{background:var(--ink);border-color:var(--ink);color:var(--paper-1)}
 #moremenu .b.on #qnum{color:#f3d9b0}
 
 /* ═══════════ 右侧：图面 ═══════════ */
@@ -377,7 +382,7 @@ body.showig .mk.ig{display:block !important;opacity:.3}
      只把旗标本身重新打开。低倍率下旗标才 0x0 隐藏，其余时候它是最大的可点目标。 */
   pointer-events:auto;cursor:pointer;
 }
-#labels .lb:hover{background:#8f2b22;box-shadow:0 0 0 1px #fbfaf5,0 0 0 2px rgba(168,52,42,.35)}
+#labels .lb:hover{background:#8f2b22;box-shadow:0 0 0 1px var(--paper),0 0 0 2px rgba(168,52,42,.35)}
 /* 竖排：writing-mode 竖排 + 字正立。窄条占地小，密集碑刻区用它挡得最少，
    而且能贴在点的左右两侧，让箭头横向指过去——横排做不到这一点。 */
 #labels .lb.v{
@@ -397,7 +402,7 @@ body.showauto .mk.auto{display:block}
 body.picking #stage{cursor:crosshair}
 #pickhint{
   position:absolute;left:50%;top:16px;transform:translateX(-50%);display:none;z-index:9;
-  background:var(--ink);color:#fbfaf5;font-size:11.5px;padding:6px 14px;border-radius:2px;
+  background:var(--ink);color:var(--paper-1);font-size:11.5px;padding:6px 14px;border-radius:2px;
   pointer-events:none;letter-spacing:.03em;
 }
 /* ═══ 待审预览 ═══
@@ -434,7 +439,8 @@ body.picking #stage{cursor:crosshair}
   transition:border-color .12s,color .12s,background .12s;
 }
 #hud button:hover{border-color:var(--ink-3);color:var(--ink);background:rgba(251,250,245,.98)}
-#zfit.on{background:var(--ink);color:#fbfaf5;border-color:var(--ink)}
+#zfit.on{background:var(--ink);color:var(--paper-1);border-color:var(--ink)}
+#znight.on{background:var(--ink);color:var(--paper-1);border-color:var(--ink)}
 #coord{
   position:absolute;left:16px;bottom:16px;font:10.5px ui-monospace,monospace;color:var(--ink-3);
   background:rgba(251,250,245,.9);border:1px solid rgba(215,210,194,.7);border-radius:2px;
@@ -541,8 +547,8 @@ body.picking #stage{cursor:crosshair}
   background:var(--paper-2);border-color:var(--line-2);color:var(--ink-2);
 }
 .sheet button.b:hover{border-color:var(--ink-3);color:var(--ink);background:#fff}
-.sheet button.b.primary{background:var(--ink);border-color:var(--ink);color:#fbfaf5}
-.sheet button.b.primary:hover{background:#1e1d1a;border-color:#1e1d1a}
+.sheet button.b.primary{background:var(--ink);border-color:var(--ink);color:var(--paper-1)}
+.sheet button.b.primary:hover{background:var(--ink-hover);border-color:var(--ink-hover)}
 #helpbox .sheet{width:min(600px,100%)}
 #desk .sheet{width:min(720px,100%)}
 #desk .tabs{display:flex;gap:0;margin:-4px 0 12px;border-bottom:1px solid var(--line)}
@@ -648,7 +654,7 @@ body.picking #stage{cursor:crosshair}
 .mnt .b{font-size:10.5px;padding:3px 8px}
 .sheet h2 button.b{font-size:11px;line-height:1.4;padding:3px 9px;color:var(--ink-2)}
 .sheet h2 #btnAuth{margin-left:auto}
-.sheet h2 #btnAuth.on{background:var(--ink);border-color:var(--ink);color:#fbfaf5}
+.sheet h2 #btnAuth.on{background:var(--ink);border-color:var(--ink);color:var(--paper-1)}
 
 /* 提交说明（commit message） */
 #cmList{list-style:none;margin:0 0 14px;padding:0;max-height:30vh;overflow:auto}
@@ -737,6 +743,63 @@ body.picking #stage{cursor:crosshair}
   body.panel #commitbar{display:none!important}
 }
 
+/* ═══════════ 反色（夜里看） ═══════════
+   整套配色只有「纸 / 墨 / 一点朱」三层，所以反色不是滤镜糊一层，而是把纸墨对调：
+   纸→深墨 #17150f、墨→纸 #f2efe4，朱砂略提亮保证在暗底上仍是一点朱。
+   底图按拓片本来的样子倒过来（黑底白线），边框、发丝线、面板一律跟着变量走；
+   少数写死纸色的地方（半透明工具条、提交条、输入行）在这里单独覆盖。 */
+html.night{
+  --paper-0:#17150f;
+  --paper-1:#17150f;
+  --paper-2:#221f18;
+  --stone-0:#181610; --stone-1:#1d1a14; --stone-2:#221f18; --stone-3:#2a261d; --stone-4:#332e24;
+  --edge-2:#4a4436;
+  --ink:#f2efe4; --ink-2:#c9c4b4; --ink-3:#9a9484; --ink-4:#736d5d;
+  --ink-hover:#dcd8c9;
+  --line:#2c2820; --line-2:#3b362b;
+  --cinnabar:#c1493c; --cinnabar-2:#d25c46;
+  --gold:#c0a256; --blue:#84a7b6;
+  --paper:#17150f; --paper2:#221f18;
+  color-scheme:dark;
+}
+/* 底图倒成拓片样子：黑底、白线。轻微 sepia 是为了不让它偏冷蓝 */
+html.night #world img{filter:invert(1) sepia(.16) contrast(1.04) brightness(1.03)}
+html.night body::before{opacity:.05;mix-blend-mode:screen}
+html.night .sheet{box-shadow:0 16px 60px rgba(0,0,0,.55)}
+html.night .modal{background:rgba(0,0,0,.55)}
+/* 写死了纸色的表面 */
+html.night #hud button,
+html.night #coord,
+html.night #menubtn,
+html.night #mSearch,
+html.night #q2hit{
+  background:rgba(26,23,17,.9);border-color:var(--line-2);
+}
+html.night #hud button:hover{background:rgba(40,36,27,.96)}
+html.night #mSearch:focus-within{background:#221f18}
+html.night #zfit.on{background:var(--ink);color:#17150f;border-color:var(--ink)}
+html.night #pvbar{background:rgba(23,21,15,.975);border-color:var(--line-2);box-shadow:0 2px 18px rgba(0,0,0,.5)}
+html.night #commitbar{background:#1f1a15;border-color:#3a2c26}
+html.night #keyrow,html.night #authrow,html.night #claimrow,html.night #qwho{background:#1e1b15}
+html.night #keyrow input,html.night #authrow input,html.night #claimrow input{background:#12100a;color:var(--ink)}
+html.night .row{border-bottom-color:#221f18}
+html.night .row:hover{background:#1e1b15}
+html.night .row.sel{background:#262218}
+html.night #toast{background:#f2efe4;color:#17150f}
+html.night #pickhint{background:#f2efe4;color:#17150f}
+/* 旗标：暗底上纸色细沿改成深色细沿，选中态用「浅底深字」反过来 */
+html.night #labels .lb{box-shadow:0 0 0 1px rgba(18,16,11,.92)}
+html.night #labels .lb.sel{
+  background:#f2efe4;color:#17150f;
+  box-shadow:0 0 0 1px #17150f,0 0 0 2.5px rgba(242,239,228,.42);
+}
+html.night #labels .lb.pv{box-shadow:0 0 0 1px rgba(18,16,11,.92)}
+html.night #labels .lb:hover{background:#9d2f26}
+/* 放大镜里是同一张底图，要跟着倒；十字准星再倒回来，不然朱砂会变青 */
+html.night #mag{filter:invert(1) sepia(.16) contrast(1.04)}
+html.night #mag i,html.night #mag .bx{filter:invert(1)}
+html.night #magbar button{background:#221f18;border-color:var(--line-2);color:var(--ink-2)}
+
 </style>
 </head>
 <body>
@@ -786,6 +849,7 @@ body.picking #stage{cursor:crosshair}
     <button class="b on" id="btnLbl" title="关掉后图上只留点，只看碑刻原字">标注名：开</button>
     <button class="b" id="btnFlagAll" title="没单独设过排布的点位，统一改成竖排或横排">全体旗标：横排</button>
     <button class="b" id="btnFlagReset" title="清掉所有单独调过的方位和排布，全部回到自动">旗标复位</button>
+    <button class="b" id="btnNight" title="纸墨对调：深墨底、浅纸字，底图倒成拓片样子">反色：关</button>
     <button class="b" id="btnExport">导出数据</button>
     <button class="b" id="btnHelp">说明</button>
   </div>
@@ -823,6 +887,7 @@ body.picking #stage{cursor:crosshair}
     <button id="zin">＋</button>
     <button id="zout">－</button>
     <button id="zfit" title="全图（只看格局；读碑上的字请用滚轮放大）">⤢</button>
+    <button id="znight" title="反色：纸墨对调，夜里看刺眼的光少一半">◐</button>
   </div>
   <div id="coord">—</div>
   <div id="insp">
@@ -910,7 +975,7 @@ body.picking #stage{cursor:crosshair}
 <b>「工作台」</b>四个标签：我的标注（我改了什么）、待审批（等审核的）、已通过、已驳回。<br>
 <b>想当审核人</b>：在待审弹层里输<b>维护者口令</b>即可（不发邮件，直接进审核），或走「用邮箱」收验证码再输授权码开通。</div>
     <div style="font-size:11px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:10px">
-      快捷键：<b>/</b> 聚焦搜索　·　<b>⌘Z</b> 撤销　·　<b>⌘S</b> 导出　·　方向键微调红点
+      快捷键：<b>/</b> 聚焦搜索　·　<b>⌘Z</b> 撤销　·　<b>⌘S</b> 导出　·　方向键微调红点　·　右上角 <b>◐</b> 反色（夜里看）
     </div>
     <div id="verline">
       平江图地名库 <b>v__VERSION__</b>　·　构建 __BUILD__　·　<span id="verCnt">点位 —</span>
@@ -3027,6 +3092,27 @@ function toggleView(){
   b.title = viewAll ? "回到阅读视图（55%·城市中心）" : "全图（只看格局；读碑上的字请用滚轮放大）";
 }
 document.getElementById("zfit").onclick = toggleView;
+
+/* ── 反色（夜里看）：纸墨对调，偏好记在本机 ── */
+const LS_NIGHT = "pjmap.night";
+function applyNight(on, quiet){
+  on = !!on;
+  document.documentElement.classList.toggle("night", on);
+  try{ on ? localStorage.setItem(LS_NIGHT, "1") : localStorage.removeItem(LS_NIGHT); }catch(e){}
+  const m = document.querySelector('meta[name="theme-color"]');
+  if(m) m.setAttribute("content", on ? "#17150f" : "#fbfaf5");
+  const hb = document.getElementById("znight");
+  if(hb) hb.classList.toggle("on", on);
+  const mb = document.getElementById("btnNight");
+  if(mb){ mb.textContent = "反色：" + (on ? "开" : "关"); mb.classList.toggle("on", on); }
+  if(!quiet) toast(on ? "已反色：纸墨对调，底图倒成拓片" : "已恢复纸白");
+}
+function toggleNight(){ applyNight(!document.documentElement.classList.contains("night")); }
+(function initNight(){
+  applyNight(document.documentElement.classList.contains("night"), true);
+  const hb = document.getElementById("znight"); if(hb) hb.onclick = toggleNight;
+  const mb = document.getElementById("btnNight"); if(mb) mb.onclick = toggleNight;
+})();
 
 /* ── 工作台：三个动作的查看入口 ── */
 document.getElementById("btnDesk").onclick = () => openDesk("mine");
