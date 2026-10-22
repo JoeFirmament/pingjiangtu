@@ -754,6 +754,7 @@ body.picking #stage{cursor:crosshair}
 
   <div id="commitbar">
     <span id="cbTxt">有 <b>0</b> 处改动待提交</span>
+    <button class="b" id="cbSync" title="去云端问一次：我提交的那些审完了没有" style="display:none">同步</button>
     <button class="b primary" id="cbGo" title="把改动送进待审队列，审核通过后所有人可见">提交审核</button>
   </div>
 
@@ -891,7 +892,7 @@ body.picking #stage{cursor:crosshair}
       快捷键：<b>/</b> 聚焦搜索　·　<b>⌘Z</b> 撤销　·　<b>⌘S</b> 导出　·　方向键微调红点
     </div>
     <div id="verline">
-      平江图地名库 <b>v1.0.4</b>　·　构建 2026-10-22 02:16　·　<span id="verCnt">点位 —</span>
+      平江图地名库 <b>v1.0.5</b>　·　构建 2026-10-22 13:24　·　<span id="verCnt">点位 —</span>
     </div>
     <div class="mnt">
       <span>本机数据（一般用不到）</span>
@@ -1133,12 +1134,61 @@ function persist(){
 /* 底部「有 N 处改动待提交」条 —— 对应 GitHub 的 Compare & pull request */
 function updateCommitBar(){
   const bar = document.getElementById("commitbar"), t = document.getElementById("cbTxt");
+  const sync = document.getElementById("cbSync");
   if(!bar || !t) return;
   const n = places.filter(p => p.fx).length;
   const sub = places.filter(p => p.sub && !p.fx).length;
   bar.classList.toggle("on", n > 0 || sub > 0);
   if(n) t.innerHTML = `有 <b>${n}</b> 处改动待提交` + (sub ? `<span class="cbsub">· ${sub} 处已提交待审</span>` : "");
   else if(sub) t.innerHTML = `<b>${sub}</b> 处已提交，等审核`;
+  else t.innerHTML = `有 <b>0</b> 处改动待提交`;      // 清零时把文案也复位，别留上一次的旧字
+  /* 有「等审核」的才需要去云端核对；审核人在别的设备上点了通过，这边就得能追上来 */
+  if(sync) sync.style.display = (sub && cloud) ? "" : "none";
+}
+/* 云端核对「我提交的那些审完了没有」——
+   审核动作发生在别人（或另一台设备）的浏览器里，本地只看得到自己留下的 sub 标记。
+   所以：拿本地 sub 的点去 proposals 里查一次，approved 就应用结果并清标记，
+   rejected 就清标记并说一句，别让「等审核」永远挂着。 */
+let lastSyncAt = 0;
+async function syncMySubs(silent){
+  if(!cloud) return 0;
+  const mine = places.filter(p => p.sub && !p.fx);
+  if(!mine.length) return 0;
+  const ids = mine.map(p => p.id);
+  const { data, error } = await cloud.database.from("proposals")
+    .select("id,place_id,n,t,x,y,note,ig,status,reviewed_at")
+    .in("place_id", ids.slice(0, 200))
+    .order("reviewed_at", { ascending: false });
+  if(error){ if(!silent) toast("同步失败：" + cloudErr(error)); return 0; }
+  let done = 0, rejected = 0;
+  for(const pr of (data || [])){
+    if(pr.status === "pending") continue;
+    const p = byId.get(pr.place_id);
+    if(!p || !p.sub) continue;
+    delete p.sub;
+    if(pr.status === "approved"){
+      if(pr.n != null) p.n = pr.n || "";
+      if(pr.t) p.t = pr.t;
+      if(pr.x != null) p.x = +pr.x;
+      if(pr.y != null) p.y = +pr.y;
+      if(pr.note != null) p.note = pr.note || "";
+      if(pr.ig != null){ +pr.ig ? p.ig = 1 : delete p.ig; }
+      BASE.set(p.id, { id:p.id, n:p.n || "", t:p.t || "", x:+p.x || 0, y:+p.y || 0,
+                       note:p.note || "", ig:p.ig ? 1 : 0 });
+      done++;
+    }else{
+      rejected++;                                    // 驳回：原文不动，只把标记拿掉
+    }
+    paintMarker(p);
+  }
+  if(done || rejected){
+    persist(); refresh();
+    if(!silent) toast(`同步完成：${done ? done + " 处已通过" : ""}${done && rejected ? "、" : ""}${rejected ? rejected + " 处被驳回" : ""}`);
+  }else if(!silent){
+    toast("已经问过云端：还有 " + mine.length + " 处在等审核");
+  }
+  lastSyncAt = Date.now();
+  return done + rejected;
 }
 /* 本地改动是否还没提交：和出厂基线比，名字 / 类型 / 备注 / 位置 / 非地名 / 新增都算 */
 function isDirty(p){
@@ -2233,6 +2283,12 @@ document.getElementById("btnName").onclick = askName;
 (function commitBar(){
   const go = document.getElementById("cbGo");
   if(go) go.onclick = () => submitEdits();
+  const sy = document.getElementById("cbSync");
+  if(sy) sy.onclick = async () => {
+    sy.disabled = true; sy.textContent = "同步中…";
+    try{ await pullApproved(true); await syncMySubs(false); }
+    finally{ sy.disabled = false; sy.textContent = "同步"; }
+  };
 })();
 (function commitSheet(){
   const box = document.getElementById("commitbox");
@@ -3027,13 +3083,24 @@ refresh();
 renderWho();
 fit();
 if(cloud){
-  pullApproved(true).then(()=>{ loadQueue(); });
+  pullApproved(true).then(()=>{ loadQueue(); syncMySubs(true); });
+  /* 定时 + 回到页面时各核一次：审核可能在别的设备上被点了通过，
+     本地那条「已提交，等审核」得能自己消失，而不是一直挂着。 */
   syncTimer = setInterval(()=>{
     if(document.hidden) return;
     if(insp.style.display === "block") return;        // 正在改点位时不打断
     if(document.getElementById("queue").classList.contains("on")) return;
     pullApproved(true);
-  }, 120000);
+    syncMySubs(true);
+  }, 60000);
+  const wake = () => {
+    if(document.hidden) return;
+    if(Date.now() - lastSyncAt < 45000) return;
+    if(!places.some(p => p.sub && !p.fx)) return;
+    pullApproved(true).then(()=>syncMySubs(true));
+  };
+  document.addEventListener("visibilitychange", wake);
+  window.addEventListener("focus", wake);
 }else{
   const ba = document.getElementById("btnAuth");
   if(ba){ ba.textContent = "云端未接"; ba.title = "本次打开没能加载云端组件，可用导入导出交换修订"; }
