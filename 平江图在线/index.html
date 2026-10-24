@@ -450,9 +450,12 @@ body.picking #stage{cursor:crosshair}
   position:absolute;right:16px;bottom:16px;width:302px;
   background:var(--paper-0);border:1px solid var(--line-2);border-radius:2px;
   box-shadow:0 1px 10px rgba(60,52,40,.05);
-  padding:14px;display:none;z-index:6;max-height:calc(100% - 32px);overflow:auto;
+  padding:0;display:none;z-index:6;max-height:calc(100% - 32px);
+  flex-direction:column;overflow:hidden;
 }
-#insp h3{margin:0 0 10px;font:500 13px/1.4 var(--serif);display:flex;align-items:center;gap:6px;
+/* 内容区自己滚，标题与底部操作区固定 —— 「保存」不该被挤到折叠线以下 */
+#insbody{overflow:auto;padding:12px 14px 4px;flex:1 1 auto;min-height:0}
+#insp h3{margin:0;padding:12px 14px 9px;border-bottom:1px solid var(--line);font:500 13px/1.4 var(--serif);display:flex;align-items:center;gap:6px;
   color:var(--ink);letter-spacing:.06em;padding-bottom:8px;border-bottom:1px solid var(--line)}
 #insp h3 span{font:9.5px ui-monospace,monospace;color:var(--ink-4);font-weight:400;letter-spacing:0}
 #mag{
@@ -494,11 +497,26 @@ body.picking #stage{cursor:crosshair}
 #flagInfo{font-size:10px;color:var(--ink-3)}
 #insp .acts{display:flex;gap:6px;margin-top:8px}
 #insp .acts button{flex:1;font-size:11.5px;padding:5px}
-/* 提交行：一句状态 + 一个动作，和上面的保存拉开一点距离，别混成同一件事 */
-#insp #inspCommit{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);
-  align-items:center;flex-wrap:wrap}
-#insp #inspCommit #icTxt{flex:1 1 100%;font-size:10.5px;color:var(--gold);letter-spacing:.03em}
-#insp #inspCommit #icGo{flex:0 0 auto;padding:5px 10px}
+/* 底部操作区：保存永远停在面板下沿，不随内容滚走。
+   以前它排在最后，字段一多就得先滚到底才能保存 —— 主操作不该藏在折叠线下面。 */
+#insfoot{
+  flex:0 0 auto;padding:9px 14px 12px;
+  background:var(--paper-0);border-top:1px solid var(--line);
+}
+#insfoot .acts{margin-top:0}
+/* 提交行：朱砂描边、不实心 —— 和墨色实心的「保存」拉开层级：
+   保存是默认动作，提交是会把东西公开出去的谨慎动作。 */
+#insp #inspCommit{margin:0 0 8px;padding:0;border:0;align-items:center;gap:8px;flex-wrap:wrap}
+#insp #inspCommit #icTxt{flex:1 1 120px;min-width:0;font-size:10.5px;color:var(--ink-3);letter-spacing:.02em;line-height:1.5}
+#insp #inspCommit #icGo{flex:0 0 auto;padding:4px 10px;background:transparent;
+  border-color:#dcb9b2;color:var(--cinnabar)}
+#insp #inspCommit #icGo:hover{background:#fdf3f0;border-color:#c99a90;color:#8f2b22}
+#insfootnote{font-size:10px;color:var(--ink-4);line-height:1.55;margin-top:7px}
+html.night #insfoot{background:#17150f;border-top-color:var(--line)}
+html.night #insfootnote,html.night #help,html.night #posHelp,html.night .cmnote,
+html.night #pvbar .pvn{color:var(--ink-3)}
+html.night #insp #inspCommit #icGo{border-color:#5a3a34;color:#d76a5c}
+html.night #insp #inspCommit #icGo:hover{background:#2a1a17}
 #help{font-size:10px;color:var(--ink-4);line-height:1.7;margin-top:9px}
 #insp .posrow{display:flex;gap:6px;margin-bottom:6px}
 #insp .posrow input{flex:1;min-width:0;padding:3px 6px;font:11px ui-monospace,monospace}
@@ -685,6 +703,17 @@ html.night #cmList .rejline{color:#d76a5c}
 .cmwho button:hover{border-color:var(--ink-3);color:var(--ink)}
 .cmacts{display:flex;gap:8px;justify-content:flex-end}
 .cmnote{font-size:10.5px;color:var(--ink-4);margin-top:10px;line-height:1.7}
+/* 署名弹层：替代原来的 prompt() —— 系统弹窗和整站纸墨完全不搭，
+   而且一句话说不清「署了名会发生什么」 */
+.sheet.narrow{width:min(440px,100%)}
+.nmlead{margin:0 0 12px;font-size:12px;line-height:1.85;color:var(--ink-2)}
+.nmlead b{font-weight:500;color:var(--ink)}
+#nmInput{
+  width:100%;font:13px "PingFang SC",sans-serif;padding:7px 9px;color:var(--ink);
+  border:1px solid var(--line-2);border-radius:2px;background:var(--paper-2);outline:none;
+}
+#nmInput:focus{border-color:var(--ink-3)}
+.nmacts{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
 
 /* ═══════════ 窄屏：侧栏变抽屉，但搜索必须留在画布上 ═══════════ */
 #menubtn{display:none}
@@ -717,6 +746,8 @@ html.night #cmList .rejline{color:#d76a5c}
   }
   /* 窄屏顶部被目录键和搜索条占了，待审预览卡片往下让一行 */
   #pvbar{top:56px;width:calc(100% - 24px)}
+  #insp #inspCommit{flex-wrap:wrap;gap:6px}
+  #insp #inspCommit #icGo{flex:1 1 100%}
   #mSearch:focus-within{border-color:var(--ink-3);background:#fff}
   #mSearch input{
     flex:1;min-width:0;height:100%;padding:0 4px 0 10px;border:0;outline:none;background:none;
@@ -812,7 +843,7 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
       <span id="seal">平江</span>
       <h1>平江圖<small>南宋绍定二年（1229）苏州城图 · 点位 <span id="tot">0</span></small></h1>
     </div>
-    <div id="who"><i class="dot"></i><span id="whoTxt">正在加载…</span><button id="btnName" title="改署名">署名</button></div>
+    <div id="who"><i class="dot"></i><span id="whoTxt">正在加载…</span><button id="btnName" title="署名只写进你提交的修订里，让人知道是谁改的；不填就是匿名">署名</button></div>
   </div>
 
   <div class="searchwrap">
@@ -888,6 +919,7 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
   <div id="coord">—</div>
   <div id="insp">
     <h3 id="inspTitle">点位<span></span></h3>
+    <div id="insbody">
     <div id="mag" title="放大镜：此处即图上原字"><i class="cx"></i><i class="cy"></i><span class="bx"></span></div>
     <div id="magbar">
       <button id="magOut" title="缩小">－</button>
@@ -929,16 +961,20 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
     <div class="acts">
       <button class="b" id="fIgnore" title="这不是地名（城墙砖、栏杆等），以后不再出现">不是地名</button>
       <button class="b" id="fDel">删除</button>
-      <button class="b" id="fSkip" title="存下这个，再飞到下一个待标点">下一个待标点 ›</button>
+      <button class="b" id="fSkip" title="存下这个，再飞到最近的待标点">下一个 ›</button>
     </div>
-    <div class="acts">
-      <button class="b primary" id="fOk" title="只保存，留在原地：改动会进左侧「待提交」">保存 ⏎</button>
+    <div id="help">⏎ 存到本机 ·　⇧⏎ 不是地名　·　⌘Z 撤销</div>
     </div>
-    <div class="acts" id="inspCommit" style="display:none">
-      <span id="icTxt"></span>
-      <button class="b primary" id="icGo" title="和左下角提交条是同一个动作：写一句依据，进待审队列">提交这处改动 →</button>
+    <div id="insfoot">
+      <div class="acts" id="inspCommit" style="display:none">
+        <span id="icTxt"></span>
+        <button class="b" id="icGo" title="把所有待提交的改动一起送进公开待审队列">提交改动 →</button>
+      </div>
+      <div class="acts">
+        <button class="b primary" id="fOk" title="只存到这台机器：别人看不到，也不进审核">保存到本机 ⏎</button>
+      </div>
+      <div id="insfootnote">存在这台机器，别人看不到；要公开就按上面「提交改动」。</div>
     </div>
-    <div id="help">改名：直接改，⏎ 存 ·　⇧⏎ 不是地名　·　⌘Z 撤销</div>
   </div>
   <div id="pickhint">点图上正确的位置 · Esc 取消</div>
   <div id="toast"></div>
@@ -958,8 +994,12 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
 <b>二、怎么标注</b><br>
 按<b>「标注模式」</b>→ 点红点或虚线框，改名字／类型／备注；拖动改坐标，或按「重新定位」；双击地图空白处可新增。<br>
 已经命名的点，<b>直接点图上那块写着名字的旗标</b>就能改；再点一次光标就落进名称框。<br>
-名字、类型、备注、坐标都能改，改完按面板底部的<b>「提交这处改动」</b>直接进待审，不用再跑去左下角找提交条。<br>
-按<b>「保存 ⏎」只存、不动视野</b>，留在原地；想连着标下一个按<b>「下一个待标点 ›」</b>。<br>
+名字、类型、备注、坐标都能改。<br><br>
+<b>三个动作别混：</b><br>
+<b>保存到本机 ⏎</b>　只写进这台浏览器，别人看不到，也不进审核。改一半、想歇会儿，按它。<br>
+<b>提交改动</b>　把<b>所有</b>待提交的改动一起送进公开待审队列（不只是面板里这一点），审核通过才算数。<br>
+<b>署名</b>　只是给「谁改的」留个记号，会跟着修订一起送出去；不填就是匿名，不需要登录。<br><br>
+想连着标下一个按<b>「下一个待标点 ›」</b>。<br>
 那个位置根本不是地名（城墙砖、栏杆纹样），按<b>「不是地名」</b>排除。<br>
 面板里的<b>放大镜</b>放大的是碑上原字 —— 照着它写名字。<br><br>
 <b>三、协作与审批</b><br>
@@ -976,7 +1016,7 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
       快捷键：<b>/</b> 聚焦搜索　·　<b>⌘Z</b> 撤销　·　<b>⌘S</b> 导出　·　方向键微调红点　·　右上角 <b>◐</b> 反色（夜里看）
     </div>
     <div id="verline">
-      平江图地名库 <b>v1.0.8</b>　·　构建 2026-10-22 14:14　·　<span id="verCnt">点位 —</span>
+      平江图地名库 <b>v1.1.0</b>　·　构建 2026-10-24 19:07　·　<span id="verCnt">点位 —</span>
     </div>
     <div class="mnt">
       <span>本机数据（一般用不到）</span>
@@ -999,6 +1039,20 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
       <button class="b primary" id="cmGo">提交，等审核</button>
     </div>
     <div class="cmnote">提交后进入公开的待审队列。审核通过即写入公开数据，所有人刷新可见；驳回则原文不变。</div>
+  </div>
+</div>
+
+<div class="modal" id="namebox">
+  <div class="sheet narrow">
+    <h2>署名 <button id="nmClose" title="关闭">×</button></h2>
+    <p class="nmlead">只是给「谁改的」留个记号。它会跟着你提交的修订一起进待审队列，
+      审核人和「工作台 → 已通过 / 已驳回」里都看得到；不填就记作匿名。<b>不需要登录，也不会上传账号。</b></p>
+    <input id="nmInput" maxlength="24" placeholder="例：大Q　·　留空＝匿名" autocomplete="off">
+    <div class="nmacts">
+      <button class="b" id="nmAnon">用匿名</button>
+      <button class="b primary" id="nmSave">记住这个名字</button>
+    </div>
+    <div class="cmnote">只存在这台浏览器里。换设备要重新填一次。</div>
   </div>
 </div>
 
@@ -1160,19 +1214,29 @@ function paintWho(){
 function renderWho(){
   const el = document.getElementById("whoTxt");
   if(el) el.innerHTML = editor
-    ? `署名 <b>${esc(editor)}</b> · 可编辑`
-    : `匿名浏览 · 可编辑，无需登录`;
+    ? `署名 <b>${esc(editor)}</b>`
+    : `匿名标注 · 点「署名」留名`;
   const b = document.getElementById("btnName");
   if(b) b.textContent = editor ? "改署名" : "署名";
   paintWho();
 }
 function askName(){
-  const v = prompt("留个署名（出现在你提交的修订里，可留空）", editor || "");
-  if(v === null) return;
-  editor = v.trim().slice(0, 24);
+  const box = document.getElementById("namebox");
+  const inp = document.getElementById("nmInput");
+  if(!box || !inp) return;
+  inp.value = editor || "";
+  box.classList.add("on");
+  setTimeout(() => { inp.focus(); inp.select(); }, 40);
+}
+function closeName(){
+  const box = document.getElementById("namebox");
+  if(box) box.classList.remove("on");
+}
+function saveName(v){
+  editor = String(v || "").trim().slice(0, 24);
   try{ editor ? localStorage.setItem(LS_EDITOR, editor) : localStorage.removeItem(LS_EDITOR); }catch(e){}
-  renderWho(); persist();
-  toast(editor ? "署名已记为本机：" + editor : "已改为匿名");
+  renderWho(); persist(); closeName();
+  toast(editor ? "署名为「" + editor + "」· 只记在这台机器" : "已改为匿名署名");
 }
 
 function mergeSeed(store){
@@ -1238,7 +1302,7 @@ function updateCommitBar(){
   const n = places.filter(p => p.fx).length;
   const sub = places.filter(p => p.sub && !p.fx).length;
   bar.classList.toggle("on", n > 0 || sub > 0);
-  if(n) t.innerHTML = `有 <b>${n}</b> 处改动待提交` + (sub ? `<span class="cbsub">· ${sub} 处已提交待审</span>` : "");
+  if(n) t.innerHTML = `<b>${n}</b> 处改动还没公开` + (sub ? `<span class="cbsub">· ${sub} 处等审核</span>` : "");
   else if(sub) t.innerHTML = `<b>${sub}</b> 处已提交，等审核`;
   else t.innerHTML = `有 <b>0</b> 处改动待提交`;      // 清零时把文案也复位，别留上一次的旧字
   /* 有「等审核」的才需要去云端核对；审核人在别的设备上点了通过，这边就得能追上来 */
@@ -1866,7 +1930,7 @@ labelLayer.addEventListener("dblclick", e => {
   fName.focus(); fName.select();
 });
 function openInsp(p){
-  insp.style.display = "block";
+  insp.style.display = "flex";
   setTitle(p);
   fName.value = p.n || "";
   fType.value = p.t || "其他";
@@ -1891,11 +1955,14 @@ function syncInspCommit(p){
   if(!box || !btn) return;
   if(!p || (!p.fx && !p.sub)){ box.style.display = "none"; return; }
   box.style.display = "flex";
+  /* 文案必须说「几处」：提交动作一次带走所有待提交，不是面板里这一点。
+     以前写「提交这处改动」，点了却发现别处的改动也一起交了 —— 这是最容易误解的一处。 */
+  const nAll = places.filter(x => x.fx).length;
   if(p.fx){
     btn.style.display = "";
-    btn.textContent = "提交这处改动 →";
     btn.disabled = false;
-    if(txt) txt.textContent = "已改动，尚未公开";
+    btn.textContent = nAll > 1 ? `提交 ${nAll} 处改动 →` : "提交改动 →";
+    if(txt) txt.textContent = nAll > 1 ? `待提交 ${nAll} 处，都还没公开` : "改好了，但还没公开";
   }else{
     btn.style.display = "none";
     if(txt) txt.textContent = "已提交，等审核通过";
@@ -1987,6 +2054,7 @@ function showMag(p){
   document.getElementById("magZ").textContent = (Math.round(magZ * 100) / 100) + "×";
 }
 function closeInsp(){ insp.style.display = "none"; }
+function inspOpen(){ return insp.style.display === "flex"; }
 
 function inferType(n){
   if(!n) return "";
@@ -2070,7 +2138,7 @@ function saveStay(){
   setTitle(p2);
   const pi = document.getElementById("posInfo");
   if(pi) pi.textContent = p2.fx ? "· 待提交" : (p2.sub ? "· 已提交，等审核" : "");
-  if(key !== key2) toast("已保存，留在编辑模式（左侧「待提交」里能看到）");
+  if(key !== key2) toast("已存到本机 · 别人还看不到，要公开请按「提交改动」");
   else toast("没有改动");
 }
 fName.addEventListener("keydown", e => {
@@ -2385,6 +2453,16 @@ document.getElementById("btnShare").onclick = async () => {
   catch(e){ prompt("复制这个链接发给别人：", url); }
 };
 document.getElementById("btnName").onclick = askName;
+/* 署名弹层的三个出口：记住 / 用匿名 / 关掉 */
+document.getElementById("nmClose").onclick = closeName;
+document.getElementById("nmAnon").onclick = () => saveName("");
+document.getElementById("nmSave").onclick = () => saveName(document.getElementById("nmInput").value);
+document.getElementById("nmInput").onkeydown = e => {
+  if(e.key === "Enter"){ e.preventDefault(); saveName(e.target.value); }
+};
+document.getElementById("namebox").onclick = e => {
+  if(e.target && e.target.id === "namebox") closeName();
+};
 
 /* 更多菜单 / 说明弹层 */
 (function moreMenu(){
@@ -2622,6 +2700,8 @@ function openCommit(){
   if(!arr.length){ toast("你还没有改动任何点位"); return; }
   if(!cloud){ exportFixFile(arr); return; }
   document.getElementById("cmCount").textContent = arr.length + " 处";
+  const cmGoBtn = document.getElementById("cmGo");
+  if(cmGoBtn) cmGoBtn.textContent = `提交 ${arr.length} 处，等审核`;
   /* 每条都带一个「去改」：被驳回的那条，人在这儿就停住了 —— 得让他回到图上改，
      而不是再点一次「提交审核」把同样的内容又交一遍。 */
   document.getElementById("cmList").innerHTML = arr.slice(0, 12).map(p => {
@@ -3285,7 +3365,7 @@ if(cloud){
      本地那条「已提交，等审核」得能自己消失，而不是一直挂着。 */
   syncTimer = setInterval(()=>{
     if(document.hidden) return;
-    if(insp.style.display === "block") return;        // 正在改点位时不打断
+    if(inspOpen()) return;        // 正在改点位时不打断
     if(document.getElementById("queue").classList.contains("on")) return;
     pullApproved(true);
     syncMySubs(true);
@@ -3332,14 +3412,15 @@ window.addEventListener("keydown", e => {
     e.preventDefault(); undoLast();
   }
   if(e.key === "Escape"){
+    if(document.getElementById("namebox").classList.contains("on")){ closeName(); return; }
     if(picking){ stopPick(); return; }
     if(previewPr){ hidePreview(); return; }
-    if(insp.style.display === "block") closeInsp();
+    if(inspOpen()) closeInsp();
   }
   {  // 方向键微调红点：1px / ⇧10px
     const tg = e.target;
     const typing = tg && /^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName);
-    if(!typing && insp.style.display === "block" &&
+    if(!typing && inspOpen() &&
        /^Arrow(Up|Down|Left|Right)$/.test(e.key)){
       const p = byId.get(selId);
       if(p){
