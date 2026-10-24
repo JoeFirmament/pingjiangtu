@@ -699,6 +699,8 @@ html.night #deskFoot{color:var(--ink-3)}
   cursor:pointer;font-family:inherit;
 }
 .b.mini:hover{border-color:var(--ink-3);color:var(--ink)}
+/* 工作台行里的「恢复」：不参与 .drow 的弹性分配，靠右贴着状态签 */
+.drow .b.mini{flex:0 0 auto;margin-left:6px;padding:0 7px;line-height:1.7}
 #cmList .rejline{color:var(--cinnabar);font-size:11px}
 html.night #cmList li{background:#1e1b15}
 html.night #cmMsg{background:#12100a}
@@ -1346,6 +1348,29 @@ try{ REJ = JSON.parse(localStorage.getItem(LS_REJ) || "{}") || {}; }catch(e){ RE
 function saveRej(){ try{ localStorage.setItem(LS_REJ, JSON.stringify(REJ)); }catch(e){} }
 function rejMark(id, info){ REJ[id] = info || {}; saveRej(); }
 function rejClear(id){ if(REJ[id]){ delete REJ[id]; saveRej(); } }
+/* 本机删除记录：删除只是「本地不显示」，云端 `places` 里那条还在 ——
+   不记下来的话，刷新时 applyApproved 会把它重新加回来，人就会以为「删了又回来了」。
+   顺便让工作台能把这些点列出来，并给一个「恢复」。 */
+const LS_DEL = "pjmap.del";
+let DEL = {};
+try{ DEL = JSON.parse(localStorage.getItem(LS_DEL) || "{}") || {}; }catch(e){ DEL = {}; }
+function saveDel(){ try{ localStorage.setItem(LS_DEL, JSON.stringify(DEL)); }catch(e){} }
+function delMark(id, p, inCloud){
+  if(!p) return;
+  DEL[id] = { p: JSON.parse(JSON.stringify(p)), at: Date.now(), cloud: !!inCloud };
+  saveDel();
+}
+function delClear(id){ if(DEL[id]){ delete DEL[id]; saveDel(); } }
+function restoreDeleted(id){
+  const rec = DEL[id];
+  if(!rec || !rec.p){ delete DEL[id]; saveDel(); toast("这条记录已失效"); return; }
+  const p = rec.p;
+  if(byId.get(p.id)){ delClear(id); refresh(); return; }
+  places.push(p); index(); addMarker(p); delClear(id);
+  persist(); refresh();
+  if(p.n) selId = p.id;
+  toast("已恢复 " + (p.n || p.id));
+}
 /* 本机刚驳回一条：清掉「等审核」的蓝标，记下谁驳的 ——
    列表里这条就会显示「被驳回」而不是「待提交」，并且能点进图里改。 */
 function markRejectedLocal(pr, who){
@@ -2105,6 +2130,7 @@ function undoLast(){
   }else if(rec.kind === "del"){
     rec.data.ig = rec.data.ig || 0;
     if(!rec.data.ig) delete rec.data.ig;
+    delClear(rec.id);
     places.push(rec.data); index(); addMarker(rec.data); refresh(); persist();
     toast("已恢复 " + (rec.data.n || rec.data.id));
   }else{
@@ -2121,12 +2147,17 @@ function undoLast(){
   }
 }
 function removePlace(id, quiet){
+  const p = byId.get(id);
+  const inCloud = !!p && BASE.has(id);          // 基线里有 = 云端/出厂就有，不是本机新增的
   const m = markerOf(id); if(m) m.remove();
   const l = labelMap.get(id); if(l){ l.remove(); labelMap.delete(id); }
   places = places.filter(x => x.id !== id);
+  if(p && !quiet) delMark(id, p, inCloud);
   index(); persist(); refresh();
   if(selId === id){ selId = null; closeInsp(); }
-  if(!quiet) toast("已删除");
+  if(!quiet) toast(inCloud
+    ? "已从本机移除 · 云端还留着，要彻底下架请用「不是地名」再提交"
+    : "已删除本机新增的点位");
 }
 
 function commit(){
@@ -2285,7 +2316,11 @@ document.getElementById("fIgnore").onclick = () => {
 document.getElementById("fLoc").onclick = () => { const p = byId.get(selId); if(p) flyTo(p.x, p.y, Math.max(s,1.1)); };
 document.getElementById("fDel").onclick = () => {
   const p = byId.get(selId); if(!p) return;
-  if(!confirm(`删除点位「${p.n || p.id}」？可用 ⌘Z 撤销。`)) return;
+  const inCloud = BASE.has(p.id);
+  const msg = `删除点位「${p.n || p.id}」？\n\n` + (inCloud
+    ? "只从这台机器移除，云端数据不动 —— 别人还看得见。\n要让所有人都看不到，请改用「不是地名」并提交。\n\n可用 ⌘Z 撤销，也可以在工作台里恢复。"
+    : "这是本机新增的点位，删掉就没了。可用 ⌘Z 撤销。");
+  if(!confirm(msg)) return;
   pushUndo({kind:"del", id:p.id, data: JSON.parse(JSON.stringify(p))});
   removePlace(p.id);
 };
@@ -2666,6 +2701,7 @@ function applyApproved(rows){
   for(const r of rows){
     if(!r || !r.id) continue;
     let p = byId.get(r.id);
+    if(!p && DEL[r.id]) continue;                      // 本机删掉的点，不要在拉取时复活
     /* 本地未提交的改动优先；但如果本地内容与云端一模一样，这个 fx 就是误判
        （旧版本在基线还没拉回来时按「新增点位」算脏），要就地清掉，否则它会永久挂着。 */
     if(p && p.fx){
@@ -2940,6 +2976,7 @@ function deskRow(o){
     `<span class="nm${o.n ? "" : " empty"}">${esc(o.n || (o.ig ? "不是地名" : "（未填名）"))}</span>` +
     `<span class="ds">${esc(o.ds || "")}</span>` +
     (o.st ? `<span class="st ${o.st}">${o.stLabel}</span>` : "") +
+    (o.act || "") +
     `<span class="dt">${esc(o.id)}</span></div>`;
 }
 function paintDesk(){
@@ -2962,7 +2999,8 @@ function paintDesk(){
   if(deskTab === "mine"){
     const dirty = places.filter(p => p.fx || isDirty(p));
     const sub   = places.filter(p => p.sub && !p.fx);
-    if(!dirty.length && !sub.length){
+    const dels  = Object.keys(DEL).filter(id => !byId.get(id));
+    if(!dirty.length && !sub.length && !dels.length){
       body.innerHTML = `<div class="empty"><b>你还没有改动</b>
         进「标注模式」，点图上的红点改名、改类型或挪位置；<br>改过的点会套上金环，出现在这里。</div>`;
       return;
@@ -2978,7 +3016,17 @@ function paintDesk(){
       (sub.length ? `<div class="sect">已提交 · 等审核 · ${sub.length} 处</div>` +
         sub.slice(0, 80).map(p => deskRow({
           n:p.n, id:p.id, st:"wait", stLabel:"待审批", ds:"已送入公开队列"
-        })).join("") : "");
+        })).join("") : "") +
+      (dels.length ? `<div class="sect">本机已删除 · ${dels.length} 处（云端仍保留）</div>` +
+        dels.slice(0, 60).map(id => {
+          const rec = DEL[id] || {};
+          return deskRow({
+            n: (rec.p && rec.p.n) || "", id,
+            st: "no", stLabel: "本机已删除",
+            ds: "删除只影响这台机器；要让所有人看不到，用「不是地名」并提交",
+            act: `<button class="b mini" data-restore="${esc(id)}" title="退回到图上">恢复</button>`
+          });
+        }).join("") : "");
     return;
   }
   if(deskTab === "pending"){
@@ -3365,6 +3413,8 @@ document.getElementById("deskTabs").onclick = e => {
   if(deskTab === "done" || deskTab === "rej") loadMine();
 };
 document.getElementById("deskBody").onclick = e => {
+  const rb = e.target.closest("[data-restore]");
+  if(rb){ restoreDeleted(rb.dataset.restore); return; }
   // 审批动作
   const btn = e.target.closest("[data-act]"); if(btn) btn.disabled = true;
   if(btn){
