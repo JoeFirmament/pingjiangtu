@@ -570,6 +570,9 @@ html.night #insp #inspCommit #icGo:hover{background:#2a1a17}
 #desk .tab.on{color:var(--ink);border-bottom-color:var(--cinnabar)}
 #desk .tab b{color:var(--cinnabar);font-weight:500;font-family:ui-monospace,monospace;font-size:10.5px}
 #desk .tab.on b{color:var(--cinnabar)}
+/* 工作台页脚：说明统计口径，免得「全是 0」被当成坏了 */
+#deskFoot{font-size:10.5px;color:var(--ink-4);line-height:1.7;margin:-4px 0 10px}
+html.night #deskFoot{color:var(--ink-3)}
 #desk .sect{font-size:9.5px;letter-spacing:.09em;color:var(--ink-4);margin:12px 0 6px}
 #desk .sect:first-child{margin-top:0}
 .drow{
@@ -1016,7 +1019,7 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
       快捷键：<b>/</b> 聚焦搜索　·　<b>⌘Z</b> 撤销　·　<b>⌘S</b> 导出　·　方向键微调红点　·　右上角 <b>◐</b> 反色（夜里看）
     </div>
     <div id="verline">
-      平江图地名库 <b>v1.1.0</b>　·　构建 2026-10-24 19:07　·　<span id="verCnt">点位 —</span>
+      平江图地名库 <b>v1.1.1</b>　·　构建 2026-10-24 19:20　·　<span id="verCnt">点位 —</span>
     </div>
     <div class="mnt">
       <span>本机数据（一般用不到）</span>
@@ -1062,11 +1065,12 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
       <button class="b" id="deskAuth" title="审核权需要登录后授予">审核登录</button>
       <button id="deskClose" title="关闭">×</button></h2>
     <div class="tabs" id="deskTabs">
-      <button class="tab on" data-tab="mine">我的标注</button>
+      <button class="tab on" data-tab="mine">我的标注 <b id="dMine">0</b></button>
       <button class="tab" data-tab="pending">待审批 <b id="dPend">0</b></button>
-      <button class="tab" data-tab="done">已通过</button>
-      <button class="tab" data-tab="rej">已驳回</button>
+      <button class="tab" data-tab="done">已通过 <b id="dDone">0</b></button>
+      <button class="tab" data-tab="rej">已驳回 <b id="dRej">0</b></button>
     </div>
+    <div id="deskFoot">只算「跟我有关的」：本机改过还没公开的、我提交的、我用这个身份审核过的。</div>
     <div id="deskBody"></div>
   </div>
 </div>
@@ -2904,7 +2908,9 @@ function openDesk(tab){
   document.getElementById("desk").classList.add("on");
   renderAuth();
   paintDesk();
-  loadMine();
+  /* 打开就拉：以前只拉「我的提交」，待审批要手动点一下那个 tab 才有数，
+     于是刚打开的一片 0 看起来像「什么都没记录」。 */
+  if(cloud){ loadQueue(); loadMine(); }
 }
 function closeDesk(){ document.getElementById("desk").classList.remove("on"); }
 function deskRow(o){
@@ -2922,10 +2928,15 @@ function paintDesk(){
     t.classList.toggle("on", t.dataset.tab === deskTab));
   const nPend = places.filter(p => p.sub && !p.fx).length;
   const nDirty = places.filter(p => p.fx || isDirty(p)).length;
-  const dp = document.getElementById("dPend");
-  if(dp) dp.textContent = String(queue.length);
+  const nDone = mineRows.filter(r => r.status === "approved").length;
+  const nRej  = mineRows.filter(r => r.status === "rejected").length;
+  const setN = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = String(v); };
+  setN("dMine", nDirty + nPend);
+  setN("dPend", queue.length);
+  setN("dDone", nDone);
+  setN("dRej", nRej);
   const sum = document.getElementById("deskSum");
-  if(sum) sum.textContent = `待提交 ${nDirty} · 待审批 ${nPend}`;
+  if(sum) sum.textContent = `待公开 ${nDirty} · 待审 ${queue.length} · 通过 ${nDone} · 驳回 ${nRej}`;
 
   if(deskTab === "mine"){
     const dirty = places.filter(p => p.fx || isDirty(p));
@@ -2979,31 +2990,66 @@ function paintDesk(){
     return;
   }
   if(!mineRows.length){
-    body.innerHTML = `<div class="empty"><b>暂无记录</b>
-      ${deskTab === "done" ? "通过后的修订会记在这里，方便回看是谁改的。" : "被驳回的修订会记在这里，可以看看审核人的意见。"}</div>`;
+    const noId = !myIdentities().length && !mySubIds.size;
+    body.innerHTML = noId
+      ? `<div class="empty"><b>这台机器还没留下身份</b>
+         这里只统计「跟我有关」的条目。先在左侧点<b>「署名」</b>留个名字（或审核登录），
+         之后你提交、审核过的修订就会归到这里。</div>`
+      : `<div class="empty"><b>暂无记录</b>
+         ${deskTab === "done" ? "通过后的修订会记在这里，方便回看是谁改的。" : "被驳回的修订会记在这里，可以看看审核人的意见。"}</div>`;
     return;
   }
-  body.innerHTML = (deskTab === "rej"
+  /* tab 名是 done/rej，数据库里是 approved/rejected —— 以前直接拿 tab 名比 status，
+     结果「已通过 / 已驳回」永远筛出 0 条，看上去就是「工作台全是空的」。 */
+  const wantStatus = deskTab === "done" ? "approved" : "rejected";
+  const rowsOfTab = mineRows.filter(r => r.status === wantStatus);
+  body.innerHTML = (deskTab === "rej" && rowsOfTab.length
       ? `<div class="sect">点任意一行 → 跳到图上去改，改完再提交一次</div>` : "") +
-    mineRows.filter(r => r.status === deskTab).map(r => deskRow({
+    rowsOfTab.map(r => deskRow({
       n:r.n, id:r.place_id,
       st:deskTab === "done" ? "ok" : "no",
       stLabel:deskTab === "done" ? "已通过" : "已驳回",
-      ds:(r.reviewer ? "审核：" + r.reviewer + "　" : "") + fmtTime(r.reviewed_at) +
+      ds: ((r.author && myIdentities().includes(r.author)) ? "我提交的" : (r.author ? "作者 " + r.author : "匿名提交")) +
+         (r.reviewer ? "　审核：" + r.reviewer : "") + "　" + fmtTime(r.reviewed_at) +
          (deskTab === "rej" && REJ[r.place_id] ? "　·　本地已留着你改的内容，可改了再交" : "")
     })).join("");
 }
 let mineRows = [];                 // 我提交过的提案及其审批结果
+/* 我在这套系统里的几个身份：署名、登录账号、口令通道 */
+function myIdentities(){
+  const out = [];
+  const add = v => { const t = String(v || "").trim(); if(t && !out.includes(t)) out.push(t); };
+  add(editor);
+  if(myUser){ add(myUser.name); add(myUser.email); }
+  /* 口令通道审的条目记名是「维护者」，不进这个集合的话，
+     那批通过/驳回记录在「工作台」里就永远看不到。 */
+  if(mKey || canReview) add("维护者");
+  return out;
+}
+/* 「已通过 / 已驳回」不能只查我提交的 —— 审核动作往往是我点的，
+   那些提案的 author 是匿名，光按 id 查就永远是空的。两路都查、去重合并。 */
 async function loadMine(){
-  const body = document.getElementById("deskBody");
   if(!cloud){ paintDesk(); return; }
+  const cols = "id,place_id,n,status,reviewer,reviewed_at,reason,author";
   const ids = [...mySubIds];
-  if(!ids.length){ mineRows = []; paintDesk(); return; }
-  const { data, error } = await cloud.database.from("proposals")
-    .select("id,place_id,n,status,reviewer,reviewed_at,reason")
-    .in("id", ids.slice(-200)).order("reviewed_at", { ascending: false });
-  if(error){ mineRows = []; paintDesk(); return; }
-  mineRows = data || [];
+  const names = myIdentities();
+  const jobs = [];
+  if(ids.length) jobs.push(cloud.database.from("proposals").select(cols)
+    .in("id", ids.slice(-200)).order("reviewed_at", { ascending: false }));
+  for(const w of names) jobs.push(cloud.database.from("proposals").select(cols)
+    .eq("reviewer", w).order("reviewed_at", { ascending: false }).limit(300));
+  if(!jobs.length){ mineRows = []; paintDesk(); return; }
+  const res = await Promise.allSettled(jobs);
+  const rows = [];
+  for(const r of res){
+    if(r.status === "fulfilled" && r.value && !r.value.error) rows.push(...(r.value.data || []));
+  }
+  const seen = new Set();
+  mineRows = rows.filter(r => {
+    const k = String(r && r.id);
+    if(!r || r.id == null || seen.has(k)) return false;
+    seen.add(k); return true;
+  });
   paintDesk();
 }
 /* 我的提交：本地记住投过的提案 id，便于在「工作台」里看审批结果 */
