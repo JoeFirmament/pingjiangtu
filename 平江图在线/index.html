@@ -1016,7 +1016,8 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
 <b>黑点</b>　当前正在看的这一点，右侧面板显示的就是它。<br>
 （金环和蓝环可以叠加：金环＝你改的还没交，蓝环＝已交在等。）<br><br>
 <b>二、怎么标注</b><br>
-按<b>「标注模式」</b>→ 点红点或虚线框，改名字／类型／备注；拖动改坐标，或按「重新定位」；双击地图空白处可新增。<br>
+按<b>「标注模式」</b>→ 点图上的红点，改名字／类型／备注；拖动改坐标，或按「重新定位」；
+新发现的地名，双击地图空白处补一个点。<br>
 已经命名的点，<b>直接点图上那块写着名字的旗标</b>就能改；再点一次光标就落进名称框。<br>
 名字、类型、备注、坐标都能改。<br><br>
 <b>三个动作别混：</b><br>
@@ -1040,7 +1041,7 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
       快捷键：<b>/</b> 聚焦搜索　·　<b>⌘Z</b> 撤销　·　<b>⌘S</b> 导出　·　方向键微调红点　·　右上角 <b>◐</b> 反色（夜里看）
     </div>
     <div id="verline">
-      平江图地名库 <b>v1.2.1</b>　·　构建 2026-10-24 20:20　·　<span id="verCnt">点位 —</span>
+      平江图地名库 <b>v1.2.2</b>　·　构建 2026-10-24 20:28　·　<span id="verCnt">点位 —</span>
     </div>
     <div class="mnt">
       <span>本机数据（一般用不到）</span>
@@ -1925,7 +1926,7 @@ function renderBlocks(){
     el.appendChild(d);
   }
 }
-function refresh(){ syncDirty(); renderStats(); renderList(); renderBlocks(); updateCommitBar(); renderChips(); showAuto(); positionLabels(); syncInspCommit(byId.get(selId)); }
+function refresh(){ syncDirty(); renderStats(); renderList(); renderBlocks(); updateCommitBar(); renderChips(); positionLabels(); syncInspCommit(byId.get(selId)); }
 
 function select(id, fly){
   selId = id;
@@ -2224,21 +2225,6 @@ function ignoreCurrent(){
   p.ig = 1; p.n = "";
   paintMarker(p); persist(); refresh(); openInsp(p);
   toast("已标为「不是地名」");
-}
-function showAuto(on){
-  const body = document.body.classList.contains("showauto");
-  if(on !== undefined && on !== body){ document.body.classList.toggle("showauto", on); }
-  const b = document.getElementById("btnAuto");
-  if(b){
-    const n = places.filter(p => !p.n && !p.ig).length;
-    b.classList.toggle("on", document.body.classList.contains("showauto"));
-    const open = document.body.classList.contains("showauto");
-    const editing = document.body.classList.contains("editing");
-    /* 只有进了标注模式才把余量摆在按钮上：浏览的人不需要背这个数 */
-    b.textContent = open ? "隐藏候选框" : (editing && n ? "候选框 " + n : "候选框");
-    b.title = document.body.classList.contains("showauto")
-      ? `隐藏 ${n} 个待认点位` : `显示 ${n} 个还没认出名字的点位`;
-  }
 }
 document.getElementById("btnLbl").onclick = () => {
   lblOn = !lblOn;
