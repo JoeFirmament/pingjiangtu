@@ -987,7 +987,6 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
     <div class="acts">
       <button class="b" id="fIgnore" title="这不是地名（城墙砖、栏杆等），以后不再出现">不是地名</button>
       <button class="b" id="fDel">删除</button>
-      <button class="b" id="fSkip" title="存下这个，再飞到最近的待标点">下一个 ›</button>
     </div>
     <div id="help">⏎ 存到本机 ·　⇧⏎ 不是地名　·　⌘Z 撤销</div>
     </div>
@@ -1041,7 +1040,7 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
       快捷键：<b>/</b> 聚焦搜索　·　<b>⌘Z</b> 撤销　·　<b>⌘S</b> 导出　·　方向键微调红点　·　右上角 <b>◐</b> 反色（夜里看）
     </div>
     <div id="verline">
-      平江图地名库 <b>v1.2.2</b>　·　构建 2026-10-24 20:28　·　<span id="verCnt">点位 —</span>
+      平江图地名库 <b>v1.2.3</b>　·　构建 2026-10-24 20:32　·　<span id="verCnt">点位 —</span>
     </div>
     <div class="mnt">
       <span>本机数据（一般用不到）</span>
@@ -2204,21 +2203,6 @@ fName.addEventListener("keydown", e => {
 fType.addEventListener("keydown", e => {
   if(e.key === "Enter"){ e.preventDefault(); saveStay(); }
 });
-function nextUnnamed(){
-  const rest = places.filter(p => !p.n && !p.ig && p.id !== selId);
-  if(!rest.length){ toast("这一带都处理完了"); closeInsp(); return; }
-  let cur = byId.get(selId);
-  if(!cur){                                   // 没有选中点 → 以当前视野中心为起点
-    const r = stage.getBoundingClientRect();
-    cur = {x: (r.width / 2 - tx) / s, y: (r.height / 2 - ty) / s};
-  }
-  const d = p => (p.x - cur.x) ** 2 + (p.y - cur.y) ** 2;
-  rest.sort((a, b) => d(a) - d(b));           // 就近推进，视线不跳
-  const p = rest[0];
-  showAuto(true);
-  select(p.id, true);
-  fName.focus(); fName.select();
-}
 function ignoreCurrent(){
   const p = byId.get(selId); if(!p) return;
   pushUndo(snap(p));
@@ -2280,7 +2264,6 @@ document.getElementById("icGo").onclick = () => { commit(); openCommit(); };
 document.getElementById("pvClose").onclick = hidePreview;
 document.getElementById("pvOk").onclick = () => decidePreview(true);
 document.getElementById("pvNo").onclick = () => decidePreview(false);
-document.getElementById("fSkip").onclick = () => { commit(); nextUnnamed(); };
 document.getElementById("fIgnore").onclick = () => {
   const p = byId.get(selId); if(!p) return;
   if(p.ig){                       // 已经是「不是地名」→ 恢复
