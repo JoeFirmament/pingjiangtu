@@ -52,6 +52,15 @@ for p in places:
             igged += 1
             break
 
+# ── 2026-10-24：整批丢弃「未命名的机器检测框」──
+# 这批框是 detect.py/detect_v.py 用图像处理找出来的候选位置，不认字，混着印章与纹样；
+# 人力标注的人读的是碑刻原字，不需要机器先框一遍。已命名的点保留（坐标本来就来自这些框），
+# 标成「不是地名」的保留（它们是人工判断的结果），手建的无框点保留。
+# 想恢复：把下面两行注释掉，重新跑本脚本即可（labels2.json / vboxes.json 原封未动）。
+_keep = [p for p in places if p.get("n") or p.get("ig") or not (p.get("w") and p.get("h"))]
+dropped = len(places) - len(_keep)
+places = _keep
+
 nn = sum(1 for p in places if p["n"])
 json.dump({"v":2, "image":{"w":4414,"h":7064},
            "counts":{"named":nn, "auto":len(places)-nn}, "places":places},
@@ -81,14 +90,8 @@ import re as _re
 html = _re.sub(r"/\*==TPLWARN-START==.*?/\*==TPLWARN-END== \*/\s*", "", html, flags=_re.S)
 html = _re.sub(r"[ \t]*<!--\s*═══ 模板提示.*?-->\s*<div id=\"tplWarn\">.*?</div>\s*", "", html, flags=_re.S)
 
-# 分块进度（页面左侧格子）：与 tiles.py 同一套网格
-XS, YS, SZ = [900, 1600, 2300, 3000], [1300, 2000, 2700, 3400, 4100, 4800], 700
+# 分块进度曾是「按检测框算剩多少待认」的尺子；框整批删掉后它没有口径了，输出空表
 blocks = []
-for by in YS:
-    for bx in XS:
-        n = sum(1 for p in places if p.get("w") and bx <= p["x"] < bx + SZ and by <= p["y"] < by + SZ)
-        if n >= 3:
-            blocks.append({"x": bx, "y": by, "n": n})
 html = html.replace("/*__BLOCKS__*/[]", json.dumps(blocks, separators=(",", ":")))
 
 out = "../平江图高清/平江图_地点数据库.html"
@@ -121,5 +124,5 @@ html_web = (html.replace("__MAPPREVIEW__", MIDURI)
 open("../平江图在线/index.html", "w", encoding="utf-8").write(html_web)
 print("index.html %.2f MB（中图内嵌）" % (os.path.getsize("../平江图在线/index.html") / 1e6))
 print(f"v{VER} · {BUILD}")
-print(f"框 {len(places)} · 已命名 {nn} · 已弃 {igged} · 待命名 {len(places)-nn} · 落名 {assigned}/{len(NAMES)} · 块 {len(blocks)}")
+print(f"点位 {len(places)} · 已命名 {nn} · 已弃 {igged} · 丢弃未命名框 {dropped} · 落名 {assigned}/{len(NAMES)}")
 if missed: print("未落位:", missed)

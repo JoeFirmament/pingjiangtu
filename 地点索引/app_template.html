@@ -897,19 +897,12 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
   <div id="chips"></div>
   <details id="legend">
     <summary class="lgT" title="展开看：每种点长什么样、各自的数字怎么算"><span>图上符号 · 怎么看</span></summary>
-    <div id="lgStat" title="待认＝还没读出名字的候选点位。按「候选框」把它们显出来，读一处少一处。">
-      已认定 <b id="lgN">0</b> · 待认 <b id="lgR">0</b>
-      <em>还没读出名字的候选位置</em>
-    </div>
     <div class="lg" id="lg-dot"><i></i><span><b>红点</b>＝名字已认定，可直接读。点红点、或点它旁边写着名字的旗标，都能改名、挪位。</span></div>
-    <div class="lg" id="lg-box"><i></i><span><b>虚线框</b>＝<em>还没认出名字</em>，框住碑上文字等你判读。按<b>「候选框」</b>打开。</span></div>
     <div class="lg" id="lg-gold"><i></i><span><b>金环</b>＝你改过，还没提交审核。</span></div>
     <div class="lg" id="lg-sub"><i></i><span><b>蓝色虚环</b>＝已提交，等审核。</span></div>
-    <div class="lg" id="lg-rest"><i></i><span><b>「待认」怎么来</b>＝点位总数 − 已认定 − 不是地名。每读出一处，这个数就少一。</span></div>
     <div class="lg" id="lg-sel"><i></i><span><b>黑点</b>＝当前正在看的这一点。</span></div>
   </details>
 
-  <details id="blockbox"><summary>分块进度 · 点格跳转</summary><div id="blocks"></div></details>
   <div id="list"></div>
 
   <div id="commitbar">
@@ -921,12 +914,10 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
   <div id="actions">
     <button class="b primary" id="btnEdit" title="进入编辑模式：改名字、拖红点、双击空白处新增">标注模式</button>
     <button class="b" id="btnDesk" title="查看我的标注内容、待审批队列与审核结果">工作台</button>
-    <button class="b" id="btnAuto" title="把还没认出名字的点位全部显示出来">候选框</button>
     <button class="b" id="btnMore" title="更多工具">⋯</button>
   </div>
 
   <div id="moremenu">
-    <button class="b" id="btnNext" title="进入编辑，从视野中心逐个标注">下一个待标点</button>
     <button class="b" id="btnQueue" title="看所有人提交的修订">待审 <b id="qnum">0</b></button>
     <button class="b" id="btnShare" title="复制当前视野的链接">复制链接</button>
     <button class="b on" id="btnLbl" title="关掉后图上只留点，只看碑刻原字">标注名：开</button>
@@ -1892,18 +1883,14 @@ function renderList(){
 function renderStats(){
   const named = places.filter(p=>p.n).length;
   const ig = places.filter(p=>p.ig && !p.n).length;
-  const rest = places.length - named - ig;
-  const a = document.getElementById("lgN"), b = document.getElementById("lgR");
-  if(a) a.textContent = named + (ig ? `（非地名 ${ig}）` : "");
-  if(b) b.textContent = rest;
   const vc = document.getElementById("verCnt");
-  if(vc) vc.textContent = `${places.length} 点位 · 已认定 ${named} · 待认 ${rest}`;
+  if(vc) vc.textContent = `${named} 处地名 · 共 ${places.length} 点位` + (ig ? ` · 非地名 ${ig}` : "");
 }
 function renderChips(){
   const el = document.getElementById("chips");
   const nDirty = places.filter(p => p.fx || isDirty(p)).length;
   const nSub = places.filter(p => p.sub && !p.fx).length;
-  const states = ["全部","待命名","已命名","已忽略"];
+  const states = ["全部","已命名","已忽略"];
   if(nDirty) states.push("待提交");
   if(nSub) states.push("待审");
   el.innerHTML = "";
@@ -1939,6 +1926,7 @@ function renderChips(){
 }
 function renderBlocks(){
   const el = document.getElementById("blocks");
+  if(!el){ return; }                        // 分块进度随检测框一起退场
   if(!BLOCKS.length){ el.style.display = "none"; return; }
   el.innerHTML = "";
   const hd = document.createElement("div");
@@ -2277,14 +2265,6 @@ function showAuto(on){
       ? `隐藏 ${n} 个待认点位` : `显示 ${n} 个还没认出名字的点位`;
   }
 }
-document.getElementById("btnAuto").onclick = () => {
-  const n = places.filter(p => !p.n && !p.ig).length;
-  if(!n){ toast("没有待认的点位了"); return; }
-  showAuto(!document.body.classList.contains("showauto"));
-  toast(document.body.classList.contains("showauto")
-    ? `已显示 ${n} 个待认点位 · 点框即可命名`
-    : "候选框已隐藏");
-};
 document.getElementById("btnLbl").onclick = () => {
   lblOn = !lblOn;
   const b = document.getElementById("btnLbl");
@@ -2514,19 +2494,6 @@ document.getElementById("btnEdit").onclick = e => {
   if(!on) closeInsp();
   refresh();                                   // 让「候选框 748」这类数字跟着模式变
   toast(on ? "标注模式：点红点改名 · 拖红点挪位 · 双击空白新增" : "已退出标注模式");
-};
-document.getElementById("btnNext").onclick = () => {
-  document.body.classList.add("editing");
-  stage.classList.add("edit");
-  setEditBtn(true);
-  if(!places.some(p => !p.n && !p.ig)){
-    // 名字都填过了：那就打开候选框，让人重新审视有没有漏判为「不是地名」的
-    showAuto(true);
-    toast("没有待认的点位了 · 已打开候选框，可重新检查");
-    return;
-  }
-  showAuto(true);                       // 让下一个待标点的框可见，否则点在哪无从看起
-  nextUnnamed();
 };
 document.getElementById("btnExport").onclick = () => {
   const blob = new Blob([JSON.stringify({v:2, image:{w:IW,h:IH}, places}, null, 1)], {type:"application/json"});
