@@ -1040,7 +1040,7 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
       快捷键：<b>/</b> 聚焦搜索　·　<b>⌘Z</b> 撤销　·　<b>⌘S</b> 导出　·　方向键微调红点　·　右上角 <b>◐</b> 反色（夜里看）
     </div>
     <div id="verline">
-      平江图地名库 <b>v1.1.3</b>　·　构建 2026-10-24 19:35　·　<span id="verCnt">点位 —</span>
+      平江图地名库 <b>v1.1.4</b>　·　构建 2026-10-24 19:44　·　<span id="verCnt">点位 —</span>
     </div>
     <div class="mnt">
       <span>本机数据（一般用不到）</span>
@@ -1091,7 +1091,8 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
       <button class="tab" data-tab="done">已通过 <b id="dDone">0</b></button>
       <button class="tab" data-tab="rej">已驳回 <b id="dRej">0</b></button>
     </div>
-    <div id="deskFoot">只算「跟我有关的」：本机改过还没公开的、我提交的、我用这个身份审核过的。</div>
+    <div id="deskFoot">只算「跟我有关的」：本机改过还没公开的、我提交的、我用这个身份审核过的。
+      「已通过 / 已驳回」是审核历史，删掉图上的点不会删掉历史。</div>
     <div id="deskBody"></div>
   </div>
 </div>
@@ -3070,16 +3071,26 @@ function paintDesk(){
      结果「已通过 / 已驳回」永远筛出 0 条，看上去就是「工作台全是空的」。 */
   const wantStatus = deskTab === "done" ? "approved" : "rejected";
   const rowsOfTab = mineRows.filter(r => r.status === wantStatus);
+  /* 「已通过」是**审核历史**，不是「图上现在有没有这个点」。
+     点位在本机删掉后，云端 places 和这条历史都还在 —— 以前这里照样显示「已通过」，
+     于是看着像「删了没生效」。现在标出「点位已删」，并给恢复。 */
+  const dels = rowsOfTab.filter(r => DEL[r.place_id]).length;
   body.innerHTML = (deskTab === "rej" && rowsOfTab.length
       ? `<div class="sect">点任意一行 → 跳到图上去改，改完再提交一次</div>` : "") +
-    rowsOfTab.map(r => deskRow({
-      n:r.n, id:r.place_id,
-      st:deskTab === "done" ? "ok" : "no",
-      stLabel:deskTab === "done" ? "已通过" : "已驳回",
-      ds: ((r.author && myIdentities().includes(r.author)) ? "我提交的" : (r.author ? "作者 " + r.author : "匿名提交")) +
-         (r.reviewer ? "　审核：" + r.reviewer : "") + "　" + fmtTime(r.reviewed_at) +
-         (deskTab === "rej" && REJ[r.place_id] ? "　·　本地已留着你改的内容，可改了再交" : "")
-    })).join("");
+    (dels ? `<div class="sect">其中 ${dels} 处点位已在本机删除 · 历史记录保留</div>` : "") +
+    rowsOfTab.map(r => {
+      const gone = !!DEL[r.place_id];
+      return deskRow({
+        n:r.n, id:r.place_id,
+        st: gone ? "no" : (deskTab === "done" ? "ok" : "no"),
+        stLabel: gone ? "点位已删" : (deskTab === "done" ? "已通过" : "已驳回"),
+        ds: ((r.author && myIdentities().includes(r.author)) ? "我提交的" : (r.author ? "作者 " + r.author : "匿名提交")) +
+           (r.reviewer ? "　审核：" + r.reviewer : "") + "　" + fmtTime(r.reviewed_at) +
+           (gone ? "　·　图上已移除，历史留着" : "") +
+           (deskTab === "rej" && REJ[r.place_id] ? "　·　本地已留着你改的内容，可改了再交" : ""),
+        act: gone ? `<button class="b mini" data-restore="${esc(r.place_id)}" title="把这一点放回图上">恢复</button>` : ""
+      });
+    }).join("");
 }
 let mineRows = [];                 // 我提交过的提案及其审批结果
 /* 我在这套系统里的几个身份：署名、登录账号、口令通道 */
@@ -3436,9 +3447,13 @@ document.getElementById("deskBody").onclick = e => {
   }
   // 点条目 → 飞到该点并打开检视面板
   const row = e.target.closest(".drow"); if(!row) return;
-  closeDesk();
   const id = row.dataset.id;
   const p = byId.get(id);
+  if(!p && DEL[id]){                       // 历史里有、图上已被本机删掉
+    toast("这一点在本机已删除 · 点右侧「恢复」可放回图上");
+    return;
+  }
+  closeDesk();
   if(p){ document.body.classList.add("editing"); stage.classList.add("edit"); setEditBtn(true); }
   select(id, true);
   if(p) flyTo(p.x, p.y, Math.max(s, 1.1));
