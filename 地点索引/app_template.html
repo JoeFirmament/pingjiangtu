@@ -529,6 +529,25 @@ body.picking #stage{cursor:crosshair}
 html.night #insfoot{background:#17150f;border-top-color:var(--line)}
 html.night #insfootnote,html.night #help,html.night #posHelp,html.night .cmnote,
 html.night #pvbar .pvn{color:var(--ink-3)}
+/* 还有一批写死浅底的块：工作台的行、待审卡片、身份条、折叠图例、搜索框聚焦态。
+   夜里它们的字色跟着变量变浅，底色却没变 —— 于是「浅底浅字」，名称整个糊掉。 */
+html.night .drow,
+html.night #deskBody .prop,
+html.night .prop,
+html.night #qwho,
+html.night #legend[open],
+html.night #btnDesk.alert,
+html.night #cmwho{
+  background:#1d1a14;border-color:var(--line);
+}
+html.night .prop{border-left-color:#4a4436}
+html.night .drow:hover,
+html.night #deskBody .prop:hover{background:#241f18;border-color:var(--line-2)}
+html.night #qwho.ok{background:#161e21;color:#9dc0cc}
+html.night #qwho.ok b{color:#b9d4de}
+html.night #q:focus,
+html.night #mSearch:focus-within,
+html.night .sheet button.b:hover{background:#221f18}
 html.night #insp #inspCommit #icGo{border-color:#5a3a34;color:#d76a5c}
 html.night #insp #inspCommit #icGo:hover{background:#2a1a17}
 #help{font-size:10px;color:var(--ink-4);line-height:1.7;margin-top:9px}
