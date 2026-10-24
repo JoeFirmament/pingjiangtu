@@ -510,7 +510,11 @@ body.picking #stage{cursor:crosshair}
 .writepad button{font-size:12px;letter-spacing:.06em}
 #flagInfo{font-size:10px;color:var(--ink-3)}
 #lg-rest i{display:none}
-#lg-rest{padding-left:18px}
+#lg-rest{padding-left:23px}
+/* 统计行：从折叠标题搬进展开区，浏览的人收起时不会一直盯着一个「747」 */
+#lgStat{font-size:11px;color:var(--ink-3);line-height:1.65;margin:2px 0 6px;padding-left:23px}
+#lgStat b{color:var(--cinnabar);font-weight:500;font-family:ui-monospace,monospace;font-size:11px}
+#lgStat em{display:block;font-style:normal;font-size:10.5px;color:var(--ink-4)}
 #insp .acts{display:flex;gap:6px;margin-top:8px}
 #insp .acts button{flex:1;font-size:11.5px;padding:5px}
 /* 底部操作区：保存永远停在面板下沿，不随内容滚走。
@@ -892,7 +896,11 @@ html.night #magbar button{background:#221f18;border-color:var(--line-2);color:va
   </div>
   <div id="chips"></div>
   <details id="legend">
-    <summary class="lgT" title="点位 ≠ 地名：图上先由机器框出 937 处碑刻文字，之后又补了若干处，合起来是当前点位总数。已经读出名字的叫「已认定」，还没名字的叫「待认」，标成「不是地名」的不计入待认。"><span>已认定 <b id="lgN">0</b> · 待认 <b id="lgR">0</b></span></summary>
+    <summary class="lgT" title="展开看：每种点长什么样、各自的数字怎么算"><span>图上符号 · 怎么看</span></summary>
+    <div id="lgStat" title="待认＝还没读出名字的候选点位。按「候选框」把它们显出来，读一处少一处。">
+      已认定 <b id="lgN">0</b> · 待认 <b id="lgR">0</b>
+      <em>还没读出名字的候选位置</em>
+    </div>
     <div class="lg" id="lg-dot"><i></i><span><b>红点</b>＝名字已认定，可直接读。点红点、或点它旁边写着名字的旗标，都能改名、挪位。</span></div>
     <div class="lg" id="lg-box"><i></i><span><b>虚线框</b>＝<em>还没认出名字</em>，框住碑上文字等你判读。按<b>「候选框」</b>打开。</span></div>
     <div class="lg" id="lg-gold"><i></i><span><b>金环</b>＝你改过，还没提交审核。</span></div>
@@ -2261,7 +2269,10 @@ function showAuto(on){
   if(b){
     const n = places.filter(p => !p.n && !p.ig).length;
     b.classList.toggle("on", document.body.classList.contains("showauto"));
-    b.textContent = document.body.classList.contains("showauto") ? "隐藏候选框" : "候选框";
+    const open = document.body.classList.contains("showauto");
+    const editing = document.body.classList.contains("editing");
+    /* 只有进了标注模式才把余量摆在按钮上：浏览的人不需要背这个数 */
+    b.textContent = open ? "隐藏候选框" : (editing && n ? "候选框 " + n : "候选框");
     b.title = document.body.classList.contains("showauto")
       ? `隐藏 ${n} 个待认点位` : `显示 ${n} 个还没认出名字的点位`;
   }
@@ -2501,7 +2512,8 @@ document.getElementById("btnEdit").onclick = e => {
   stage.classList.toggle("edit", on);
   setEditBtn(on);
   if(!on) closeInsp();
-  toast(on ? "标注模式：点红点改名 · 拖红点挪位 · 双击空白新增" : "已退出版标注模式");
+  refresh();                                   // 让「候选框 748」这类数字跟着模式变
+  toast(on ? "标注模式：点红点改名 · 拖红点挪位 · 双击空白新增" : "已退出标注模式");
 };
 document.getElementById("btnNext").onclick = () => {
   document.body.classList.add("editing");
